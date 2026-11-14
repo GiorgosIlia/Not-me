@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#161A3A">
+<title>Δεν είμαι! — Party Games</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@500;700&family=Commissioner:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --night:#161A3A;--panel:#20265A;--panel2:#272E6B;--ink:#10143A;--line:#343C82;
+  --bulb:#FFC94A;--bulb-deep:#E9A51C;--glow:rgba(255,201,74,.5);
+  --tomato:#EF5A3C;--olive:#7FBF6A;--paper:#F6F0E1;--paper-ink:#2A2440;
+  --txt:#F3F1FA;--mut:#AEB3D9;
+  --display:"Comfortaa",ui-rounded,system-ui,sans-serif;
+  --body:"Commissioner",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{font:400 15px/1.5 var(--body);color:var(--txt);-webkit-tap-highlight-color:transparent;
+  background:radial-gradient(120% 60% at 50% -10%,#2B3283 0%,rgba(43,50,131,0) 60%),var(--night) fixed}
+#app{max-width:480px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom));min-height:100dvh;display:flex;flex-direction:column;gap:12px}
+h1,h2,h3,.big,.word,.timer{font-family:var(--display);font-weight:700;letter-spacing:-.01em}
+h2{font-size:22px;line-height:1.25}
+h3{font-size:17px;line-height:1.3;color:var(--txt)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.mut{color:var(--mut);font-size:14px;line-height:1.5}
+.center{text-align:center}
+.big{font-size:28px;line-height:1.2;text-align:center}
+:focus-visible{outline:3px solid var(--bulb);outline-offset:2px}
+
+/* ---- the light-bulb letters (the one bold thing) ---- */
+.bulbs{position:relative;display:flex;justify-content:center;gap:clamp(4px,1.6vw,10px);padding:10px 0 22px;margin:0 auto}
+.bulbs .wire{position:absolute;left:-4%;right:-4%;top:0;width:108%;height:34px;overflow:visible}
+.bulbs .wire path{fill:none;stroke:#0B0E2A;stroke-width:1.6;vector-effect:non-scaling-stroke}
+.bulbs span{--s:clamp(44px,12vw,56px);position:relative;display:grid;place-items:center;width:var(--s);height:var(--s);border-radius:50%;
+  transform:translateY(calc(var(--y) * 14px));font:700 calc(var(--s)*.5)/1 var(--display);color:#3A2600;
+  background:radial-gradient(circle at 34% 28%,#FFF6CF 0 12%,#FFD76E 38%,var(--bulb) 60%,var(--bulb-deep) 100%);
+  box-shadow:0 0 22px var(--glow),0 0 2px rgba(255,255,255,.8) inset}
+.bulbs span::before{content:"";position:absolute;top:-9px;left:50%;width:12px;height:10px;margin-left:-6px;border-radius:3px 3px 2px 2px;background:#0B0E2A}
+.bulbs.big span{--s:clamp(46px,13.5vw,62px)}
+.bulbs.anim span{animation:light .5s ease-out both;animation-delay:calc(var(--i) * 140ms)}
+@keyframes light{0%{background:#3A3F6E;box-shadow:none;color:#5C6197}60%{box-shadow:0 0 34px rgba(255,201,74,.9)}100%{}}
+.hero{text-align:center;padding:4px 0 2px}
+.hero .sub{color:var(--mut);font-size:14.5px;max-width:30ch;margin:0 auto}
+.codebox .bulbs{margin:2px auto 8px}
+
+/* ---- panels ---- */
+.box{background:var(--panel);border:1px solid rgba(255,255,255,.05);border-radius:20px;padding:16px}
+.box h3+p{margin-top:4px}
+.demo-box{background:linear-gradient(var(--panel),var(--panel)) padding-box,linear-gradient(135deg,rgba(255,201,74,.55),rgba(255,201,74,.05)) border-box;border:1.5px dashed rgba(255,201,74,.45)}
+.note{background:rgba(255,201,74,.1);border:1px solid rgba(255,201,74,.3);color:#FFE6A6;border-radius:14px;padding:10px 14px;font-size:13.5px;line-height:1.45}
+.lbl{font-size:13px;color:var(--mut);margin:14px 0 6px;font-weight:600}
+.err{color:#FF9C86;font-size:14px;text-align:center;min-height:18px}
+.err:empty{min-height:0}
+
+/* ---- top bar ---- */
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:36px}
+.top>.mut{font-weight:600;color:var(--txt);font-family:var(--display);font-size:15px}
+.x{background:transparent;border:1.5px solid var(--line);color:var(--txt);border-radius:999px;padding:6px 12px;font:600 13px var(--body);cursor:pointer}
+.codepill{border-radius:999px;padding:5px 10px;font:700 13px var(--display);letter-spacing:.12em;background:var(--bulb);color:#3A2600}
+.row{display:flex;gap:8px;align-items:center}
+.row>*{flex:1}
+
+/* ---- buttons ---- */
+.btn{display:block;width:100%;border:0;border-radius:999px;padding:15px 18px;font:700 16px var(--display);cursor:pointer;
+  background:var(--bulb);color:#3A2600;box-shadow:0 4px 0 var(--bulb-deep),0 8px 24px rgba(255,201,74,.18)}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--bulb-deep)}
+.btn:disabled{opacity:.45;pointer-events:none}
+.btn.sec{background:transparent;color:var(--txt);border:1.5px solid var(--line);box-shadow:none}
+.btn.sec:active{background:rgba(255,255,255,.05)}
+.btn.sm{padding:11px 16px;font-size:14px;width:auto;display:inline-block}
+.btn+.btn{margin-top:-2px}
+
+/* ---- inputs ---- */
+input,select{width:100%;padding:13px 14px;border-radius:14px;border:1.5px solid var(--line);background:var(--ink);color:var(--txt);font:500 17px var(--body);outline:none}
+input:focus,select:focus{border-color:var(--bulb)}
+input::placeholder{color:#6B71A8}
+#code{font-family:var(--display)}
+.seg{display:flex;background:var(--ink);border-radius:999px;padding:4px;gap:4px}
+.seg button{flex:1;border:0;background:transparent;color:var(--mut);padding:9px 6px;border-radius:999px;font:700 14px var(--body);cursor:pointer}
+.seg button.on{background:var(--panel2);color:var(--txt);box-shadow:0 0 0 1.5px var(--bulb) inset}
+.seg.lang{width:100%;max-width:300px;margin:0 auto}
+
+/* ---- players ---- */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:flex;align-items:center;gap:8px;background:var(--ink);border-radius:999px;padding:5px 12px 5px 5px;font-weight:600;font-size:14px}
+.chip.off{opacity:.45}
+.chip.out{opacity:.35;text-decoration:line-through}
+.av{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;font:700 13px var(--display);color:#fff;background:hsl(var(--h) 55% 48%);flex:none;text-decoration:none}
+.crown{font-style:normal;font-size:13px}
+.dot{width:8px;height:8px;border-radius:50%;background:#5B608F;display:inline-block}
+.dot.on{background:var(--olive);box-shadow:0 0 6px var(--olive)}
+
+/* ---- game tickets ---- */
+.ticket{display:flex;align-items:stretch;width:100%;text-align:left;border:0;cursor:pointer;color:var(--paper-ink);background:var(--paper);border-radius:16px;font:inherit;
+  -webkit-mask:radial-gradient(circle 9px at 76px 0,#0000 98%,#000) top/100% 51% no-repeat,radial-gradient(circle 9px at 76px 100%,#0000 98%,#000) bottom/100% 51% no-repeat;
+  mask:radial-gradient(circle 9px at 76px 0,#0000 98%,#000) top/100% 51% no-repeat,radial-gradient(circle 9px at 76px 100%,#0000 98%,#000) bottom/100% 51% no-repeat;transition:transform .12s}
+.ticket:active{transform:scale(.985)}
+.ticket .stub{flex:none;width:76px;display:grid;place-items:center;font-size:34px;background:var(--bulb);border-right:2px dashed rgba(42,36,64,.35)}
+.ticket.red .stub{background:var(--tomato)}
+.ticket .meta{padding:14px 16px;display:flex;flex-direction:column;gap:3px}
+.ticket b{font:700 19px var(--display)}
+.ticket .meta span{font-size:14px;line-height:1.4;color:#4A4462}
+.ticket em{font-style:normal;font-weight:700;font-size:13px;color:#7A3A12;margin-top:4px}
+.ticket.red em{color:#A3301A}
+.settings{margin-top:-4px}
+.settings .lbl:first-child{margin-top:0}
+
+/* ---- Ballpark ---- */
+.q{font:700 20px/1.35 var(--display);text-align:center;text-wrap:balance}
+.boosts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.boost{background:var(--ink);border:1.5px solid transparent;border-radius:16px;padding:10px 4px;color:var(--txt);text-align:center;cursor:pointer;font:600 13px var(--body)}
+.boost span{display:block;font-size:24px;line-height:1.3}
+.boost.on{border-color:var(--bulb);background:#3A3420}
+.boost:disabled{opacity:.3}
+.pick{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.pick button{background:var(--ink);border:1.5px solid var(--line);color:var(--txt);border-radius:999px;padding:8px 14px;font:600 15px var(--body);cursor:pointer}
+.pick button.on{border-color:var(--bulb);background:#3A3420}
+table{width:100%;border-collapse:collapse;font-size:15px}
+td,th{padding:10px 6px;border-bottom:1px solid var(--line);text-align:left}
+th{font-size:13px;color:var(--mut);font-weight:600}
+tr:last-child td{border-bottom:0}
+td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+tr.me td{color:var(--bulb)}
+.good{color:var(--olive);font-weight:800}
+.badc{color:#FF9C86}
+.bar{height:10px;background:var(--ink);border-radius:999px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--bulb);border-radius:999px;box-shadow:0 0 10px var(--glow)}
+.confetti{font-size:56px;text-align:center}
+
+/* ---- Impostor ---- */
+.reveal{min-height:230px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;user-select:none;-webkit-user-select:none;cursor:pointer}
+.reveal.back{background:repeating-linear-gradient(45deg,#232A63 0 14px,#1D2357 14px 28px);border:2px solid var(--line)}
+.reveal.imp{background:radial-gradient(circle at 50% 0,#FF7A5C,var(--tomato) 45%,#9E2A16);color:#fff}
+.reveal.cit{background:radial-gradient(circle at 50% 0,#A6DB8F,var(--olive) 45%,#3F7A3A);color:#0F2410}
+.reveal.flip{animation:flip .45s ease-out}
+@keyframes flip{from{transform:perspective(700px) rotateY(90deg);opacity:.4}to{transform:none;opacity:1}}
+.word{font-size:34px;line-height:1.15}
+.timer{font-size:60px;text-align:center;font-variant-numeric:tabular-nums;line-height:1.1}
+.timer.low{color:var(--tomato)}
+.tbar{height:8px;border-radius:999px;background:var(--ink);overflow:hidden;margin:10px 0 4px}
+.tbar i{display:block;height:100%;background:var(--bulb);transition:width .5s linear}
+.vote{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.vote button{display:flex;align-items:center;gap:10px;padding:12px;border-radius:16px;border:1.5px solid var(--line);background:var(--panel);color:var(--txt);font:600 16px var(--body);cursor:pointer;text-align:left}
+.vote button.on{border-color:var(--tomato);background:#3B1F3A}
+.vote button.out{opacity:.3;text-decoration:line-through;pointer-events:none}
+ul.rules{padding-left:18px;font-size:14.5px;line-height:1.6}
+ul.rules li{margin:5px 0}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--paper);color:var(--paper-ink);padding:11px 18px;border-radius:999px;font-weight:600;font-size:14px;max-width:90%;text-align:center;z-index:5;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.btn[data-a="submit-range"]{margin-top:14px}
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.ans{font:700 46px/1.1 var(--display);text-align:center;color:var(--bulb);text-shadow:0 0 24px var(--glow);margin-top:8px;font-variant-numeric:tabular-nums}
+.word.glow{color:var(--bulb);text-shadow:0 0 20px var(--glow)}
+.reveal .rs{font-size:15px;font-weight:600;opacity:.85}
+.reveal.cit .rs{color:#173A17}
+.reveal.imp .rs{color:#FFE9E2}
+.av.bot{background:#3A4185;font-size:15px}
+.chips.cen{justify-content:center}
+.chip .tick{font-style:normal;font-weight:800;color:var(--mut)}
+.chip.yes .tick{color:var(--olive)}
+.chip.wait{opacity:.6}
+.rulesrow{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;color:var(--mut);font-size:13px;margin-top:2px}
+
+/* easter egg */
+.bulbs span[data-a]{cursor:pointer}
+.bulbs span.tapped{filter:brightness(1.25) saturate(1.2)}
+.bulbs.mid{padding-top:6px}
+.bulbs.mid span{--s:clamp(34px,10.4vw,48px)}
+.egg{cursor:pointer}
+.egg .bulbs.anim span{animation:flicker .9s steps(1,end) both;animation-delay:calc(var(--i) * 90ms)}
+@keyframes flicker{0%{background:#3A3F6E;box-shadow:none;color:#5C6197}20%{background:radial-gradient(circle at 34% 28%,#FFF6CF 0 12%,#FFD76E 38%,var(--bulb) 60%,var(--bulb-deep) 100%);box-shadow:0 0 30px rgba(255,201,74,.9);color:#3A2600}35%{background:#3A3F6E;box-shadow:none;color:#5C6197}55%{}100%{}}
+
+.name .bulbs+.bulbs{padding-top:4px;margin-top:-6px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="config.js" onerror="void 0"></script>
+<script>
+"use strict";
+const QA=[{"el":"Σε ποια χρονιά έγιναν οι πρώτοι σύγχρονοι Ολυμπιακοί Αγώνες στην Αθήνα;","en":"In what year were the first modern Olympic Games held in Athens?","a":1896},{"el":"Ποιο είναι το ύψος του Ολύμπου (Μύτικας) σε μέτρα;","en":"How tall is Mount Olympus (Mytikas peak), in metres?","a":2918},{"el":"Ποια χρονιά έγινε η Ελλάδα μέλος της ΕΟΚ;","en":"In what year did Greece join the EEC (today's EU)?","a":1981},{"el":"Ποια χρονιά η Εθνική Ελλάδας κατέκτησε το Euro;","en":"In what year did Greece win the UEFA European Championship?","a":2004},{"el":"Πόσα οστά έχει ο σκελετός ενός ενήλικα;","en":"How many bones are in the adult human skeleton?","a":206},{"el":"Ποια χρονιά ολοκληρώθηκε ο Πύργος του Άιφελ;","en":"In what year was the Eiffel Tower completed?","a":1889},{"el":"Ποια χρονιά έπεσε η Κωνσταντινούπολη;","en":"In what year did Constantinople fall?","a":1453},{"el":"Πόσα πλήκτρα έχει ένα κλασικό πιάνο;","en":"How many keys does a standard piano have?","a":88},{"el":"Ποια χρονιά πάτησε για πρώτη φορά άνθρωπος στη Σελήνη;","en":"In what year did a human first walk on the Moon?","a":1969},{"el":"Πόσα κράτη μέλη έχει σήμερα η Ευρωπαϊκή Ένωση;","en":"How many member states does the European Union have today?","a":27},{"el":"Ποιο είναι το ύψος του Έβερεστ σε μέτρα;","en":"How tall is Mount Everest, in metres?","a":8849},{"el":"Πόσα κράτη μέλη έχει ο ΟΗΕ;","en":"How many member states does the United Nations have?","a":193},{"el":"Σε ποια χρονιά π.Χ. έγινε η Μάχη του Μαραθώνα;","en":"In what year BC was the Battle of Marathon?","a":490},{"el":"Σε ποια χρονιά π.Χ. έγινε η Μάχη των Θερμοπυλών;","en":"In what year BC was the Battle of Thermopylae?","a":480},{"el":"Πόσα τετράγωνα έχει μια σκακιέρα;","en":"How many squares are on a chessboard?","a":64},{"el":"Σε πόσους βαθμούς Φαρενάιτ βράζει το νερό;","en":"At how many degrees Fahrenheit does water boil?","a":212},{"el":"Πόσοι παίκτες κάθε ομάδας είναι στο γήπεδο στο ράγκμπι (rugby union);","en":"How many players per team are on the field in rugby union?","a":15},{"el":"Πόσες ραψωδίες έχει η Ιλιάδα;","en":"How many books (rhapsodies) does Homer's Iliad have?","a":24},{"el":"Ποια χρονιά έπεσε η Χούντα στην Ελλάδα;","en":"In what year did Greece's military junta fall?","a":1974},{"el":"Πόσα δόντια έχει ένας ενήλικας (μαζί με τους φρονιμίτες);","en":"How many teeth does an adult have, wisdom teeth included?","a":32},{"el":"Πόση είναι η μέση απόσταση Γης–Σελήνης σε χιλιόμετρα;","en":"What is the average distance from the Earth to the Moon, in km?","a":384400},{"el":"Πόσες καρδιές έχει ένα χταπόδι;","en":"How many hearts does an octopus have?","a":3},{"el":"Ποια χρονιά ιδρύθηκε η Google;","en":"In what year was Google founded?","a":1998},{"el":"Ποια χρονιά κυκλοφόρησε το πρώτο iPhone;","en":"In what year was the first iPhone released?","a":2007},{"el":"Πόσες ώρες έχει μια εβδομάδα;","en":"How many hours are in a week?","a":168},{"el":"Σε ποια χρονιά π.Χ. πέθανε ο Σωκράτης;","en":"In what year BC did Socrates die?","a":399},{"el":"Πόσο ύψος έχει ο Λυκαβηττός σε μέτρα;","en":"How tall is Lycabettus Hill in Athens, in metres?","a":277},{"el":"Ποια χρονιά μπήκαν στις τσέπες μας τα χαρτονομίσματα και κέρματα του ευρώ;","en":"In what year did euro banknotes and coins go into circulation?","a":2002},{"el":"Πόσα μέτρα είναι ένας γύρος σε κανονικό στίβο;","en":"How many metres is one lap of a standard running track?","a":400},{"el":"Ποιο είναι το ύψος του Ταΰγετου σε μέτρα;","en":"How tall is Mount Taygetus (Peloponnese), in metres?","a":2407},{"el":"Ποια χρονιά έγινε η Μικρασιατική Καταστροφή;","en":"In what year did the Asia Minor Catastrophe happen?","a":1922},{"el":"Ποια χρονιά ξεκίνησε ο Ελληνοϊταλικός πόλεμος (το «ΟΧΙ»);","en":"In what year did the Greco-Italian War begin (the famous \"Ochi\")?","a":1940},{"el":"Πόσα καράτια είναι ο καθαρός χρυσός;","en":"How many carats is pure gold?","a":24},{"el":"Πόσα δευτερόλεπτα έχει ένα 24ωρο;","en":"How many seconds are in a day?","a":86400},{"el":"Πόσα χημικά στοιχεία έχει ο Περιοδικός Πίνακας;","en":"How many elements are in the periodic table?","a":118},{"el":"Πόσους βουλευτές έχει η Ελληνική Βουλή;","en":"How many MPs sit in the Hellenic Parliament?","a":300},{"el":"Σε πόσες διοικητικές περιφέρειες χωρίζεται η Ελλάδα;","en":"Into how many administrative regions is Greece divided?","a":13},{"el":"Ποια χρονιά δημιουργήθηκε το Facebook;","en":"In what year was Facebook created?","a":2004},{"el":"Ποια χρονιά ξεκίνησε η Ελληνική Επανάσταση;","en":"In what year did the Greek War of Independence begin?","a":1821},{"el":"Ποια χρονιά εγκαινιάστηκε η Γέφυρα Ρίου–Αντιρρίου;","en":"In what year did the Rio–Antirrio bridge open?","a":2004},{"el":"Πόσα γράμματα έχει το ελληνικό αλφάβητο;","en":"How many letters are in the Greek alphabet?","a":24},{"el":"Πόσα χιλιόμετρα το δευτερόλεπτο τρέχει περίπου το φως;","en":"Roughly how many kilometres per second does light travel?","a":299792},{"el":"Ποια χρονιά γεννήθηκε ο Μέγας Αλέξανδρος (π.Χ.);","en":"In what year BC was Alexander the Great born?","a":356},{"el":"Πόσα πόδια έχει ένα έντομο;","en":"How many legs does an insect have?","a":6},{"el":"Πόσα λεπτά έχει μια μέρα;","en":"How many minutes are in a day?","a":1440},{"el":"Πόσα κομμάτια έχει ένα κλασικό σετ σκάκι (και για τους δύο παίκτες);","en":"How many pieces are in a standard chess set (both players)?","a":32},{"el":"Πόσα φύλλα έχει μια τράπουλα χωρίς τους τζόκερ;","en":"How many cards are in a deck without jokers?","a":52},{"el":"Πόσες κουκκίδες έχει συνολικά ένα ζάρι;","en":"How many dots are there in total on a standard die?","a":21},{"el":"Πόσα χρόνια κράτησε ο Πελοποννησιακός Πόλεμος;","en":"How many years did the Peloponnesian War last?","a":27},{"el":"Πόσα κράτη έχουν το ευρώ ως νόμισμα (από το 2026);","en":"How many countries use the euro (as of 2026)?","a":21},{"el":"Πόσα μέτρα είναι η κλασική απόσταση του Μαραθωνίου;","en":"How many metres is the classic marathon distance?","a":42195},{"el":"Ποια χρονιά τελείωσε ο Β' Παγκόσμιος Πόλεμος;","en":"In what year did World War II end?","a":1945},{"el":"Πόσοι είναι οι θεοί του Δωδεκάθεου;","en":"How many gods are among the Twelve Olympians?","a":12},{"el":"Πόσους κύκλους έχει το σήμα των Ολυμπιακών Αγώνων;","en":"How many rings are in the Olympic symbol?","a":5},{"el":"Ποια χρονιά άνοιξε το μετρό της Αθήνας (γραμμές 2 & 3);","en":"In what year did the Athens Metro (lines 2 & 3) open?","a":2000}];
+const CATS=[
+ {id:'food',el:'Φαγητά',en:'Food'},
+ {id:'places',el:'Μέρη',en:'Places'},
+ {id:'animals',el:'Ζώα',en:'Animals'},
+ {id:'jobs',el:'Επαγγέλματα',en:'Jobs'},
+ {id:'objects',el:'Αντικείμενα',en:'Objects'},
+ {id:'hobbies',el:'Αθλήματα & Χόμπι',en:'Sports & Hobbies'},
+ {id:'greece',el:'Ελλάδα',en:'Greece'}
+];
+const WORDS_EN={
+ food:["Souvlaki","Moussaka","Stuffed peppers","Pastitsio","Spinach pie","Pizza","Sushi","Sesame bread ring","Bougatsa (cream pie)","Bean soup","Honey doughnuts","Tzatziki","Gyros","Greek salad","Ice cream","Pasta","Crêpe","Baklava","Hamburger","Stuffed vine leaves"],
+ places:["Beach","Airport","Hospital","Supermarket","Cinema","Gym","Street market","Ship","Church","School","Stadium","Tavern","Library","Hair salon","Kiosk","Zoo","Museum","Campsite","Bank","Nightclub"],
+ animals:["Cat","Dog","Elephant","Giraffe","Penguin","Dolphin","Turtle","Owl","Lion","Kangaroo","Octopus","Bee","Goat","Parrot","Bear","Snake","Horse","Butterfly","Shark","Squirrel"],
+ jobs:["Doctor","Teacher","Chef","Pilot","Police officer","Firefighter","Fisherman","Dentist","Hairdresser","Taxi driver","Lawyer","Architect","Baker","Actor","Lifeguard","Engineer","Postman","Waiter","Farmer","YouTuber"],
+ objects:["Umbrella","Mobile phone","Toothbrush","Keys","Sunglasses","Remote control","Pillow","Scissors","Mirror","Watch","Wallet","Broom","Guitar","Torch","Hair dryer","Bicycle","Suitcase","Worry beads (komboloi)","Headphones","Fridge"],
+ hobbies:["Football","Basketball","Tennis","Swimming","Skiing","Water polo","Fishing","Dancing","Chess","Backgammon","Bowling","Cycling","Yoga","Cooking","Mountain climbing","Volleyball","Karate","Surfing","Karaoke","Photography"],
+ greece:["Acropolis","Mykonos","Santorini","Meteora","Ouzo","Feta","Evzone guard","Bouzouki","Sirtaki","Kafeneio (coffee house)","Frappé","White Tower","Village festival (panigyri)","Thessaloniki bread ring","Souvlaki","Olive","Easter","Backgammon (tavli)","Crete","Retsina"]
+};
+const WORDS_EL={"food":["Σουβλάκι","Μουσακάς","Γεμιστά","Παστίτσιο","Σπανακόπιτα","Πίτσα","Σούσι","Κουλούρι","Μπουγάτσα","Φασολάδα","Λουκουμάδες","Τζατζίκι","Γύρος","Χωριάτικη","Παγωτό","Μακαρόνια","Κρέπα","Μπακλαβάς","Χάμπουργκερ","Ντολμαδάκια"],"places":["Παραλία","Αεροδρόμιο","Νοσοκομείο","Σούπερ μάρκετ","Σινεμά","Γυμναστήριο","Λαϊκή","Πλοίο","Εκκλησία","Σχολείο","Γήπεδο","Ταβέρνα","Βιβλιοθήκη","Κομμωτήριο","Περίπτερο","Ζωολογικός κήπος","Μουσείο","Κάμπινγκ","Τράπεζα","Κλαμπ"],"animals":["Γάτα","Σκύλος","Ελέφαντας","Καμηλοπάρδαλη","Πιγκουίνος","Δελφίνι","Χελώνα","Κουκουβάγια","Λιοντάρι","Καγκουρό","Χταπόδι","Μέλισσα","Κατσίκα","Παπαγάλος","Αρκούδα","Φίδι","Άλογο","Πεταλούδα","Καρχαρίας","Σκίουρος"],"jobs":["Γιατρός","Δάσκαλος","Μάγειρας","Πιλότος","Αστυνομικός","Πυροσβέστης","Ψαράς","Οδοντίατρος","Κομμωτής","Ταξιτζής","Δικηγόρος","Αρχιτέκτονας","Φούρναρης","Ηθοποιός","Ναυαγοσώστης","Μηχανικός","Ταχυδρόμος","Σερβιτόρος","Αγρότης","Youtuber"],"objects":["Ομπρέλα","Κινητό","Οδοντόβουρτσα","Κλειδιά","Γυαλιά ηλίου","Τηλεκοντρόλ","Μαξιλάρι","Ψαλίδι","Καθρέφτης","Ρολόι","Πορτοφόλι","Σκούπα","Κιθάρα","Φακός","Σεσουάρ","Ποδήλατο","Βαλίτσα","Κομπολόι","Ακουστικά","Ψυγείο"],"hobbies":["Ποδόσφαιρο","Μπάσκετ","Τένις","Κολύμπι","Σκι","Πόλο","Ψάρεμα","Χορός","Σκάκι","Τάβλι","Μπόουλινγκ","Ποδηλασία","Γιόγκα","Μαγειρική","Ορειβασία","Βόλεϊ","Καράτε","Σέρφινγκ","Καραόκε","Φωτογραφία"],"greece":["Ακρόπολη","Μύκονος","Σαντορίνη","Μετέωρα","Ούζο","Φέτα","Τσολιάς","Μπουζούκι","Συρτάκι","Καφενείο","Φραπέ","Λευκός Πύργος","Πανηγύρι","Κουλούρι Θεσσαλονίκης","Σουβλάκι","Ελιά","Πάσχα","Τάβλι","Κρήτη","Ρετσίνα"]};
+
+
+/* ---------------- P2P transport ----------------
+   The host's phone keeps the room's whole database in memory (same layout
+   as before) and enforces the privacy rules itself. Players connect to the
+   host over WebRTC (PeerJS) and read/write through a tiny request protocol.
+   PeerJS's matchmaking server only introduces phones; game data goes
+   phone-to-phone. */
+const APP_VERSION='2.3.0';
+const PROTO=3;               // bump when the host<->player messages change
+const hostId=code=>'parea-party-gr-'+code.toLowerCase();
+function norm(v){
+  if(v===null||v===undefined)return null;
+  if(Array.isArray(v)){const a=v.map(norm);return a.some(x=>x!==null)?a:null}
+  if(typeof v==='object'){const o={};for(const k in v){const n=norm(v[k]);if(n!==null)o[k]=n}return Object.keys(o).length?o:null}
+  if(typeof v==='number'&&!isFinite(v))return null;
+  return v;
+}
+function makeTreeDB(store,uid){
+  const parts=p=>p.split('/').filter(Boolean);
+  const getAt=p=>parts(p).reduce((o,k)=>o==null?undefined:o[k],store.tree);
+  const setAt=(p,v)=>{const ks=parts(p);let o=store.tree;
+    for(let i=0;i<ks.length-1;i++){if(typeof o[ks[i]]!=='object'||o[ks[i]]===null)o[ks[i]]={};o=o[ks[i]]}
+    const last=ks[ks.length-1];const n=norm(v);if(n===null)delete o[last];else o[last]=JSON.parse(JSON.stringify(n));
+    store.tree=norm(store.tree)||{};};
+  const mySubs=new Set();
+  const fire=()=>{for(const s of mySubs){const v=norm(getAt(s.p));const j=JSON.stringify(v);if(j!==s.last){s.last=j;s.cb(v===null?null:JSON.parse(j))}}};
+  const commit=()=>{store.save&&store.save();for(const f of store.fires)queueMicrotask(f)};
+  store.fires=store.fires||new Set();store.fires.add(fire);
+  return {uid,mode:'host',now:()=>Date.now(),
+    peek:p=>norm(getAt(p)),
+    get:async p=>{const v=norm(getAt(p));return v===null?null:JSON.parse(JSON.stringify(v))},
+    set:async(p,v)=>{setAt(p,v);commit()},
+    update:async(p,obj)=>{for(const k in obj)setAt(p+'/'+k,obj[k]);commit()},
+    remove:async p=>{setAt(p,null);commit()},
+    on:(p,cb)=>{const s={p,cb,last:undefined};mySubs.add(s);queueMicrotask(fire);return()=>mySubs.delete(s)},
+    onDisconnectSet:()=>{},
+    onConnected:cb=>{queueMicrotask(()=>cb(true));return()=>{}}};
+}
+let PEER_OVERRIDE=null;
+function loadPeer(){
+  if(PEER_OVERRIDE)return Promise.resolve(PEER_OVERRIDE);
+  if(window.PAREA_PEER)return Promise.resolve(window.PAREA_PEER);
+  if(window.Peer)return Promise.resolve(window.Peer);
+  return new Promise((res,rej)=>{const s=document.createElement('script');
+    s.src='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
+    s.onload=()=>window.Peer?res(window.Peer):rej(new Error('PeerJS'));s.onerror=()=>rej(new Error('Δεν φορτώθηκε η βιβλιοθήκη σύνδεσης (internet;)'));
+    document.head.appendChild(s)});
+}
+const peerOpts=()=>Object.assign({debug:0},window.PAREA_ICE?{config:{iceServers:window.PAREA_ICE}}:{});
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* ---- host side ---- */
+async function hostRoomDB(code,restoreTree){
+  const Peer=await loadPeer();
+  const peer=await new Promise((res,rej)=>{
+    const p=new Peer(hostId(code),peerOpts());let opened=false;
+    p.on('open',()=>{opened=true;res(p)});
+    p.on('error',e=>{if(!opened){try{p.destroy()}catch(x){}rej(e)}else console.warn('host peer',e&&e.type)});
+  });
+  let saveT=null;
+  const store={tree:restoreTree||{},fires:new Set(),save:()=>{if(A.demo)return;clearTimeout(saveT);saveT=setTimeout(()=>{try{sessionStorage.setItem('parea-host-tree',JSON.stringify(store.tree))}catch(e){}},300)}};
+  const db=makeTreeDB(store,A.uid);db.mode='host';db.code=code;
+  const clients=new Set();
+  const hostUid=()=>{const m=db.peek(`rooms/${code}/meta`);return m&&m.host};
+  function perm(uid,path,mode){
+    const s=path.split('/').filter(Boolean);
+    if(s[0]!=='rooms'||s[1]!==code||s.length<3)return false;
+    if(uid===hostUid())return true;
+    const seg=s[2],who=s[3];
+    if(mode==='read')return seg==='meta'||seg==='players'||seg==='state'||((seg==='inputs'||seg==='secrets')&&who===uid);
+    return (seg==='players'||seg==='inputs')&&who===uid&&s.length>=4;
+  }
+  const send=(cl,m)=>{try{cl.conn.send(m)}catch(e){}};
+  function push(cl){
+    for(const[sid,s]of cl.subs){const v=db.peek(s.p);const j=JSON.stringify(v);if(j!==s.last){s.last=j;send(cl,{t:'val',sid,v})}}
+  }
+  async function onMsg(cl,m){
+    if(!m||typeof m!=='object')return;
+    if(m.t==='hello'){
+      if(m.v!==PROTO){send(cl,{t:'reject',reason:'version',v:PROTO,app:APP_VERSION});setTimeout(()=>{try{cl.conn.close()}catch(e){}},800);return}
+      if(typeof m.uid!=='string'||!/^[a-z0-9]{6,24}$/.test(m.uid)||m.uid===A.uid){send(cl,{t:'reject',reason:'id'});return}
+      cl.uid=m.uid;clients.add(cl);cl.fire=()=>push(cl);store.fires.add(cl.fire);
+      send(cl,{t:'welcome',v:PROTO,now:Date.now()});return;
+    }
+    if(!cl.uid)return;
+    const raw=JSON.stringify(m);if(raw.length>6000){if(m.id)send(cl,{t:'res',id:m.id,ok:false,err:'too big'});return}
+    if(m.t==='op'){
+      let ok=true,v=null,err=null;
+      try{
+        if(m.op==='get'){if(!perm(cl.uid,m.p,'read'))throw new Error('denied');v=db.peek(m.p)}
+        else if(m.op==='set'||m.op==='remove'){if(!perm(cl.uid,m.p,'write'))throw new Error('denied');await db.set(m.p,m.op==='remove'?null:m.v)}
+        else if(m.op==='update'){const o=m.v||{};for(const k in o)if(!perm(cl.uid,m.p+'/'+k,'write'))throw new Error('denied');await db.update(m.p,o)}
+        else throw new Error('bad op');
+      }catch(e){ok=false;err=e.message}
+      send(cl,{t:'res',id:m.id,ok,v,err});return;
+    }
+    if(m.t==='sub'){if(perm(cl.uid,m.p,'read')){cl.subs.set(m.sid,{p:m.p,last:undefined});push(cl)}else send(cl,{t:'val',sid:m.sid,v:null,denied:true});return}
+    if(m.t==='unsub'){cl.subs.delete(m.sid);return}
+    if(m.t==='ondisc'){if(perm(cl.uid,m.p,'write'))cl.disc.set(m.p,m.v);return}
+  }
+  peer.on('connection',conn=>{
+    const cl={conn,uid:null,subs:new Map(),disc:new Map(),fire:null};
+    conn.on('data',m=>onMsg(cl,m));
+    const gone=()=>{if(cl.gone)return;cl.gone=true;clients.delete(cl);if(cl.fire)store.fires.delete(cl.fire);
+      if(cl.uid&&![...clients].some(c=>c.uid===cl.uid))for(const[p,v]of cl.disc)db.set(p,v)};
+    conn.on('close',gone);conn.on('error',gone);
+  });
+  peer.on('disconnected',()=>{if(!db.closed)setTimeout(()=>{try{peer.reconnect()}catch(e){}},1000)});
+  db.close=()=>{db.closed=true;setTimeout(()=>{try{peer.destroy()}catch(e){}},500)};
+  db.clientCount=()=>clients.size;
+  return db;
+}
+async function hostRoomWithRetry(code,tree,tries){
+  for(let i=0;i<tries;i++){
+    try{return await hostRoomDB(code,tree)}
+    catch(e){if(e&&e.type==='unavailable-id'&&i<tries-1){await sleep(1500);continue}throw e}
+  }
+}
+
+/* ---- player side ---- */
+async function joinRoomDB(code,opt){
+  const myUid=(opt&&opt.uid)||A.uid;
+  const Peer=await loadPeer();
+  const peer=await new Promise((res,rej)=>{const p=new Peer(undefined,peerOpts());let opened=false;
+    const to=setTimeout(()=>{if(!opened){try{p.destroy()}catch(e){}rej(new Error('Δεν απαντάει ο server σύνδεσης'))}},12000);
+    p.on('open',()=>{opened=true;clearTimeout(to);res(p)});
+    p.on('error',e=>{if(!opened){clearTimeout(to);try{p.destroy()}catch(x){}rej(e)}});});
+  const db={uid:myUid,mode:'player',code,offset:0,closed:false};
+  let conn=null,ready=false,reqN=0,sidN=0,pendingConnect=null;
+  const pending=new Map(),subs=new Map(),disc=new Map(),connCbs=[];
+  const setReady=r=>{ready=r;connCbs.forEach(f=>{try{f(r)}catch(e){console.error(e)}})};
+  function connect(){
+    return new Promise((res,rej)=>{
+      const c=peer.connect(hostId(code),{reliable:true,serialization:'json'});
+      let done=false;const fail=e=>{if(done)return;done=true;clearTimeout(to);pendingConnect=null;try{c.close()}catch(x){}rej(e)};
+      const to=setTimeout(()=>fail(new Error('timeout')),9000);
+      pendingConnect=fail;
+      c.on('open',()=>c.send({t:'hello',uid:myUid,v:PROTO}));
+      c.on('data',m=>{
+        if(!m||typeof m!=='object')return;
+        if(m.t==='welcome'){
+          if(!done){done=true;clearTimeout(to);pendingConnect=null}
+          db.offset=m.now-Date.now();conn=c;
+          for(const[sid,s]of subs){s.last=undefined;c.send({t:'sub',sid,p:s.p})}
+          for(const[p,v]of disc)c.send({t:'ondisc',p,v});
+          setReady(true);res();return;
+        }
+        if(m.t==='reject'){const e=new Error(m.reason);e.reject=m;fail(e);return}
+        if(m.t==='res'){const q=pending.get(m.id);if(q){pending.delete(m.id);m.ok?q.res(m.v):q.rej(new Error(m.err||'error'))}return}
+        if(m.t==='val'){const s=subs.get(m.sid);if(s)s.cb(m.v===undefined?null:m.v);return}
+      });
+      const onClose=()=>{
+        if(!done){fail(new Error('closed'));return}
+        if(conn===c){conn=null;setReady(false);for(const[,q]of pending)q.rej(new Error('offline'));pending.clear();if(!db.closed)setTimeout(retry,1500)}
+      };
+      c.on('close',onClose);c.on('error',onClose);
+    });
+  }
+  let retrying=false;
+  async function retry(){
+    if(db.closed||ready||retrying)return;retrying=true;
+    try{await connect()}catch(e){if(e.reject&&e.reject.reason==='version'){db.onFatal&&db.onFatal('version');retrying=false;return}retrying=false;setTimeout(retry,2500);return}
+    retrying=false;
+  }
+  peer.on('error',e=>{if(e&&e.type==='peer-unavailable'&&pendingConnect)pendingConnect(Object.assign(new Error('not-found'),{notFound:true}))});
+  peer.on('disconnected',()=>{if(!db.closed)setTimeout(()=>{try{peer.reconnect()}catch(e){}},1000)});
+  const req=(op,p,v)=>new Promise((res,rej)=>{
+    if(!ready||!conn)return rej(new Error('Εκτός σύνδεσης — δοκίμασε ξανά'));
+    const id=++reqN;pending.set(id,{res,rej});conn.send({t:'op',id,op,p,v});
+    setTimeout(()=>{if(pending.has(id)){pending.delete(id);rej(new Error('timeout'))}},10000)});
+  db.now=()=>Date.now()+db.offset;
+  db.get=p=>req('get',p);
+  db.set=(p,v)=>req('set',p,v===undefined?null:v);
+  db.update=(p,v)=>req('update',p,v);
+  db.remove=p=>req('remove',p);
+  db.on=(p,cb)=>{const sid=++sidN;subs.set(sid,{p,cb});if(ready&&conn)conn.send({t:'sub',sid,p});
+    return()=>{subs.delete(sid);if(ready&&conn)try{conn.send({t:'unsub',sid})}catch(e){}}};
+  db.onDisconnectSet=(p,v)=>{disc.set(p,v);if(ready&&conn)conn.send({t:'ondisc',p,v})};
+  db.onConnected=cb=>{connCbs.push(cb);queueMicrotask(()=>cb(ready));return()=>{}};
+  db.close=()=>{db.closed=true;setTimeout(()=>{try{conn&&conn.close()}catch(e){}try{peer.destroy()}catch(e){}},300)};
+  try{await connect()}catch(e){db.closed=true;try{peer.destroy()}catch(x){}throw e}
+  return db;
+}
+
+/* ---- in-page network for "Try with bots" (no internet needed) ---- */
+const DemoNet=new Map();const dLater=f=>setTimeout(f,15);
+class DEm{constructor(){this.h={}}on(e,f){(this.h[e]=this.h[e]||[]).push(f)}emit(e,...a){(this.h[e]||[]).forEach(f=>{try{f(...a)}catch(x){console.error(x)}})}}
+class DConn extends DEm{constructor(){super();this.other=null;this.open=false;this.closed=false}
+  send(m){if(!this.open||this.closed)return;const o=this.other,j=JSON.stringify(m);dLater(()=>{if(!o.closed)o.emit('data',JSON.parse(j))})}
+  close(){if(this.closed)return;this.closed=true;this.open=false;dLater(()=>this.emit('close'));const o=this.other;if(o&&!o.closed){o.closed=true;o.open=false;dLater(()=>o.emit('close'))}}}
+class DemoPeer extends DEm{constructor(id){super();this.conns=[];dLater(()=>{if(id&&DemoNet.has(id)){this.emit('error',{type:'unavailable-id'});return}
+  this.id=id||('d'+Math.random().toString(36).slice(2,9));DemoNet.set(this.id,this);this.emit('open',this.id)})}
+  connect(id){const a=new DConn();this.conns.push(a);dLater(()=>{const t=DemoNet.get(id);if(!t){this.emit('error',{type:'peer-unavailable'});return}
+    const b=new DConn();a.other=b;b.other=a;t.conns.push(b);t.emit('connection',b);dLater(()=>{a.open=b.open=true;b.emit('open');a.emit('open')})});return a}
+  reconnect(){}destroy(){DemoNet.delete(this.id);this.conns.forEach(c=>c.close())}}
+
+/* ---------------- language ---------------- */
+const STR={
+el:{appName:'Δεν είμαι!',tagline:'Online party games — ο καθένας από το κινητό του, χωρίς server',yourName:'Το όνομά σου',namePh:'π.χ. Νίκος',
+ newRoom:'Νέο δωμάτιο',newRoomSub:'Γίνε οικοδεσπότης και στείλε τον σύνδεσμο στην παρέα.',create:'Δημιούργησε δωμάτιο',
+ joinRoom:'Μπες σε δωμάτιο',codePh:'ΚΩΔΙΚΟΣ',join:'Μπες',rules:'Κανόνες',gRange:'Στο Περίπου',gImp:'Impostor',version:'έκδοση',
+ needName:'Γράψε πρώτα το όνομά σου',code4:'Ο κωδικός έχει 4 γράμματα',busyCreate:'Ανοίγει το δωμάτιο…',busyJoin:'Σύνδεση με τον οικοδεσπότη…',
+ busyResume:c=>`Επανασύνδεση στο δωμάτιο ${c}…`,resumeFail:'Το δωμάτιο δεν μπόρεσε να ανοίξει ξανά — φτιάξε νέο.',
+ errVersion:v=>`Έχεις διαφορετική έκδοση από τον οικοδεσπότη (${v}). Ανανέωσε τη σελίδα ή ενημέρωσε την εφαρμογή — το ίδιο και ο οικοδεσπότης.`,
+ errNotFound:'Δεν βρέθηκε ενεργό δωμάτιο με αυτόν τον κωδικό. Έλεγξε τον κωδικό — ο οικοδεσπότης πρέπει να έχει την εφαρμογή ανοιχτή.',
+ errTimeout:'Η σύνδεση με τον οικοδεσπότη δεν πέτυχε. Αν είσαι με δεδομένα κινητού, δοκίμασε Wi-Fi (ή το αντίστροφο).',
+ errGeneric:m=>'Πρόβλημα σύνδεσης: '+m,noRoom:c=>`Δεν βρέθηκε δωμάτιο «${c}»`,roomClosed:'Το δωμάτιο έκλεισε',
+ linkCopied:'Ο σύνδεσμος αντιγράφηκε ✓',shareText:c=>`Έλα να παίξουμε! Κωδικός: ${c}`,
+ hostBanner:'📱 Το δωμάτιο «ζει» στο κινητό σου. Κράτα την εφαρμογή ανοιχτή και την οθόνη αναμμένη μέχρι να τελειώσετε.',
+ lobby:'Λόμπι',roomCode:'Κωδικός δωματίου',shareBtn:'📤 Στείλε σύνδεσμο στην παρέα',players:'Παίκτες',you:'(εσύ)',
+ rangeDesc:'Απαντήσεις-αριθμοί. Δώσε εύρος — όσο πιο στενό, τόσο πιο πολλοί πόντοι.',pl2:'2+ παίκτες · Ξεκίνα ▶',pl3:'3+ παίκτες · Ξεκίνα ▶',
+ impDesc:'Όλοι ξέρουν τη λέξη — εκτός από έναν.',category:'Κατηγορία',random:'🎲 Τυχαία',impostors:'Impostors',
+ hintQ:'Ο Impostor βλέπει την κατηγορία;',yes:'Ναι',no:'Όχι',talkTime:'Χρόνος συζήτησης',
+ waitHost:'Περιμένουμε τον οικοδεσπότη να διαλέξει παιχνίδι…',leave:'Έξοδος',offline:'⚠ εκτός σύνδεσης',
+ inProgress:'Παιχνίδι σε εξέλιξη',startedTitle:'Το παιχνίδι έχει ήδη ξεκινήσει',nextGame:'Θα μπεις στο επόμενο. Μείνε εδώ!',
+ scores:'Βαθμολογία',round:n=>`Γύρος ${n}`,pts:n=>`${n} πόντοι`,forceReveal:'Αποκάλυψη τώρα (χωρίς να περιμένουμε)',
+ locked:'Κλειδώθηκε!',stealing:'Κλέβεις εύρος',yourRange:'Το εύρος σου',waitingFor:'Περιμένουμε',offTag:' (εκτός)',
+ used:'έγινε',stealQ:'Από ποιον κλέβεις το εύρος;',swapNeed3:'Χρειάζονται 3+ παίκτες για Αλλαγή.',swapQ:'Διάλεξε δύο παίκτες που θα ανταλλάξουν εύρη',
+ stealNote:'Κλέβεις άλλου εύρος — δεν χρειάζεται να γράψεις',from:'Από',to:'Έως',boostsL:'Μπόνους (προαιρετικά, ένα ανά γύρο)',
+ bSteal:'Κλέψιμο',bSwap:'Αλλαγή',bDouble:'Διπλό',lockBtn:'Κλείδωσε 🔒',answered:(a,b)=>`Έχουν απαντήσει ${a}/${b}`,
+ errBoth:'Γράψε και τους δύο αριθμούς',errSteal:'Διάλεξε από ποιον κλέβεις',errSwap:'Διάλεξε δύο παίκτες',
+ player:'Παίκτης',rangeH:'Εύρος',ptsH:'Πόντοι',winFor:n=>`Νίκη για ${n}!`,again:'Ξανά!',toLobby:'Πίσω στο λόμπι',
+ nextQ:'Επόμενη ερώτηση →',endLobby:'Τέλος — πίσω στο λόμπι',hostWillNew:'Ο οικοδεσπότης θα ξεκινήσει νέο παιχνίδι…',hostWillNext:'Ο οικοδεσπότης θα βγάλει την επόμενη ερώτηση…',
+ nSwap:(p,a,b)=>`🔀 ${p} άλλαξε τα εύρη των ${a} και ${b}`,nSwapX:p=>`🔀 Η αλλαγή του/της ${p} ακυρώθηκε`,nSteal:(p,x)=>`🦝 ${p} έκλεψε το εύρος του/της ${x}`,nDouble:p=>`✖️2 ${p} διπλασίασε!`,
+ need2:'Χρειάζονται τουλάχιστον 2 συνδεδεμένοι παίκτες',need3:'Χρειάζονται τουλάχιστον 3 συνδεδεμένοι παίκτες',
+ loadingRole:'Φορτώνει ο ρόλος σου…',impNoWord:'Δεν ξέρεις τη λέξη. Μπλόφαρε!',partner:'Συνεργός',citizenL:'Είσαι Πολίτης. Η μυστική λέξη:',
+ rolesL:'Impostor · Ρόλοι',tapRole:'Πάτα για να δεις τον ρόλο σου',hideScreen:'Κράτα την οθόνη μακριά από τους άλλους 🙈',
+ seenWait:'✓ Περιμένουμε τους υπόλοιπους…',seenBtn:'Το είδα — κρύψ\' το ✓',seenDone:'✓ Το είδες. Περιμένουμε τους υπόλοιπους…',forceDiscuss:'Ξεκίνα τη συζήτηση τώρα',
+ hideRole:'🙈 Κρύψε τον ρόλο μου',showRole:'👁 Δες τον ρόλο μου',starts:'Ξεκινάει ο/η',clueInfo:'Με τη σειρά, ο καθένας λέει μία λέξη. Μετά συζητήστε!',
+ voteNow:'🗳️ Ψηφοφορία τώρα',eliminated:'Έχεις αποκλειστεί — παρακολουθείς 👀',voteL:'Impostor · Ψηφοφορία',whoImp:'🗳️ Ποιος είναι ο Impostor;',
+ voteInfo:'Πάτα έναν παίκτη. Μπορείς να αλλάξεις ψήφο μέχρι να ψηφίσουν όλοι.',votedL:'Ψήφισαν',closeVote:'Κλείσε την ψηφοφορία τώρα',
+ endL:'Impostor · Τέλος',citWin:'Κέρδισαν οι Πολίτες!',impsWin:'Κέρδισαν οι Impostors!',impWin:'Κέρδισε ο Impostor!',
+ lastOut:(n,r)=>`Τελευταίος βγήκε: <b>${n}</b> (${r})`,roleImp:'Impostor',roleCit:'Πολίτης',wordWas:'Η μυστική λέξη ήταν',votesL:'Ψήφοι',
+ newRound:'Νέος γύρος (νέα λέξη)',hostWillRound:'Ο οικοδεσπότης θα ξεκινήσει νέο γύρο…',
+ lTie:'🤝 Ισοψηφία — κανείς δεν βγαίνει. Πάμε ξανά!',lImpOut:(p,n)=>`🎉 ${p} ήταν Impostor! Μένουν ακόμα ${n}.`,lCitOut:p=>`😬 ${p} ήταν Πολίτης! Ο Impostor είναι ακόμα εδώ…`,
+ back:'Πίσω',error:'Σφάλμα: ',connecting:'Σύνδεση στο δωμάτιο…',demoTitle:'Δοκίμασε με bots',demoSub:'Παίξε μόνος σου με 3 ρομπότ, για να δεις πώς δουλεύει.',demoBtn:'Ξεκίνα δοκιμή',
+ demoBanner:'🤖 Δοκιμή: παίζεις με 3 bots σε αυτό το κινητό. Για παιχνίδι με φίλους, φτιάξε κανονικό δωμάτιο.',demoTalk:'Τα bots δεν μιλάνε 🤐 Πάτα «Ψηφοφορία τώρα» όταν είσαι έτοιμος.',bots:['Μπιπ','Ρομπο-Ρένα','Τσιπάκιας'],busyDemo:'Έρχονται τα bots…',or:'ή',
+ rulesRange:`<li>Σε κάθε γύρο όλοι βλέπουν την ίδια ερώτηση με απάντηση αριθμό.</li>
+<li>Ο καθένας γράφει από το κινητό του ένα <b>εύρος</b> (π.χ. 1950–1980). Κανείς δεν βλέπει τα εύρη των άλλων μέχρι την αποκάλυψη.</li>
+<li>Αν η απάντηση είναι μέσα στο εύρος σου: <b>4 πόντοι</b> για το πιο στενό σωστό εύρος, <b>1 πόντος</b> για κάθε άλλο σωστό.</li>
+<li>Μπόνους, το καθένα <b>μία φορά</b> ανά παιχνίδι (ένα ανά γύρο):<br>🦝 <b>Κλέψιμο</b> — παίρνεις το εύρος άλλου.<br>🔀 <b>Αλλαγή</b> — δύο άλλοι ανταλλάσσουν εύρη.<br>✖️2 <b>Διπλό</b> — αν βρεις, διπλοί πόντοι.</li>
+<li>Πρώτα εφαρμόζονται οι αλλαγές, μετά τα κλεψίματα. Νικάει όποιος φτάσει πρώτος τους <b>16 πόντους</b>.</li>`,
+ rulesImp:`<li>Ο καθένας βλέπει τον ρόλο του στο δικό του κινητό.</li>
+<li>Οι <b>Πολίτες</b> βλέπουν τη μυστική λέξη. Ο <b>Impostor</b> όχι (μπορεί να βλέπει μόνο την κατηγορία).</li>
+<li>Με τη σειρά, ο καθένας λέει δυνατά <b>μία λέξη</b> σχετική με τη μυστική λέξη. Συζητήστε!</li>
+<li>Όταν τελειώσει ο χρόνος, ο καθένας ψηφίζει από το κινητό του. Ο πιο ψηφισμένος βγαίνει (ισοψηφία = κανείς).</li>
+<li>Αν βγουν όλοι οι Impostors κερδίζουν οι Πολίτες. Αν οι Impostors γίνουν όσοι οι Πολίτες, κερδίζουν οι Impostors.</li>
+<li>Σε μικτή παρέα, ο καθένας βλέπει τη λέξη στη γλώσσα του.</li>`},
+en:{appName:'Not Me!',tagline:'Online party games — everyone plays on their own phone, no server needed',yourName:'Your name',namePh:'e.g. Alex',
+ newRoom:'New room',newRoomSub:'Be the host and send the link to your friends.',create:'Create room',
+ joinRoom:'Join a room',codePh:'CODE',join:'Join',rules:'Rules',gRange:'Ballpark',gImp:'Impostor',version:'version',
+ needName:'Type your name first',code4:'The code has 4 letters',busyCreate:'Opening the room…',busyJoin:'Connecting to the host…',
+ busyResume:c=>`Reconnecting to room ${c}…`,resumeFail:"The room couldn't be reopened — create a new one.",
+ errVersion:v=>`You have a different version from the host (${v}). Refresh the page or update the app — and ask the host to do the same.`,
+ errNotFound:'No active room with this code. Check the code — the host must have the app open.',
+ errTimeout:"Couldn't connect to the host. If you're on mobile data, try Wi-Fi (or the other way round).",
+ errGeneric:m=>'Connection problem: '+m,noRoom:c=>`Room “${c}” not found`,roomClosed:'The room was closed',
+ linkCopied:'Link copied ✓',shareText:c=>`Come play! Room code: ${c}`,
+ hostBanner:'📱 The room lives on your phone. Keep the app open and the screen on until you finish.',
+ lobby:'Lobby',roomCode:'Room code',shareBtn:'📤 Send the link to your friends',players:'Players',you:'(you)',
+ rangeDesc:'Every answer is a number. Give a range — the tighter it is, the more points.',pl2:'2+ players · Start ▶',pl3:'3+ players · Start ▶',
+ impDesc:'Everyone knows the word — except one.',category:'Category',random:'🎲 Random',impostors:'Impostors',
+ hintQ:'Does the Impostor see the category?',yes:'Yes',no:'No',talkTime:'Discussion time',
+ waitHost:'Waiting for the host to pick a game…',leave:'Leave',offline:'⚠ offline',
+ inProgress:'Game in progress',startedTitle:'The game has already started',nextGame:"You'll join the next one. Stay here!",
+ scores:'Scores',round:n=>`Round ${n}`,pts:n=>`${n} points`,forceReveal:"Reveal now (don't wait)",
+ locked:'Locked in!',stealing:"You're stealing a range",yourRange:'Your range',waitingFor:'Waiting for',offTag:' (offline)',
+ used:'used',stealQ:'Whose range are you stealing?',swapNeed3:'Swap needs 3+ players.',swapQ:'Pick two players to swap ranges',
+ stealNote:"You're stealing a range — no need to type one",from:'From',to:'To',boostsL:'Boosts (optional, one per round)',
+ bSteal:'Steal',bSwap:'Swap',bDouble:'Double',lockBtn:'Lock in 🔒',answered:(a,b)=>`${a}/${b} answered`,
+ errBoth:'Enter both numbers',errSteal:'Pick whose range to steal',errSwap:'Pick two players',
+ player:'Player',rangeH:'Range',ptsH:'Points',winFor:n=>`${n} wins!`,again:'Play again!',toLobby:'Back to lobby',
+ nextQ:'Next question →',endLobby:'End — back to lobby',hostWillNew:'The host will start a new game…',hostWillNext:'The host will show the next question…',
+ nSwap:(p,a,b)=>`🔀 ${p} swapped ${a}'s and ${b}'s ranges`,nSwapX:p=>`🔀 ${p}'s swap was cancelled`,nSteal:(p,x)=>`🦝 ${p} stole ${x}'s range`,nDouble:p=>`✖️2 ${p} doubled up!`,
+ need2:'At least 2 connected players needed',need3:'At least 3 connected players needed',
+ loadingRole:'Loading your role…',impNoWord:"You don't know the word. Bluff!",partner:'Partner',citizenL:"You're a Citizen. The secret word:",
+ rolesL:'Impostor · Roles',tapRole:'Tap to see your role',hideScreen:'Keep your screen away from the others 🙈',
+ seenWait:'✓ Waiting for the others…',seenBtn:'Got it — hide it ✓',seenDone:'✓ Seen. Waiting for the others…',forceDiscuss:'Start the discussion now',
+ hideRole:'🙈 Hide my role',showRole:'👁 See my role',starts:'Starting with',clueInfo:'In turn, everyone says one word. Then discuss!',
+ voteNow:'🗳️ Vote now',eliminated:"You're out — watching 👀",voteL:'Impostor · Vote',whoImp:'🗳️ Who is the Impostor?',
+ voteInfo:'Tap a player. You can change your vote until everyone has voted.',votedL:'Voted',closeVote:'Close the vote now',
+ endL:'Impostor · Game over',citWin:'The Citizens win!',impsWin:'The Impostors win!',impWin:'The Impostor wins!',
+ lastOut:(n,r)=>`Last out: <b>${n}</b> (${r})`,roleImp:'Impostor',roleCit:'Citizen',wordWas:'The secret word was',votesL:'Votes',
+ newRound:'New round (new word)',hostWillRound:'The host will start a new round…',
+ lTie:'🤝 Tie — nobody is out. Go again!',lImpOut:(p,n)=>`🎉 ${p} was an Impostor! ${n} still left.`,lCitOut:p=>`😬 ${p} was a Citizen! The Impostor is still here…`,
+ back:'Back',error:'Error: ',connecting:'Connecting to the room…',demoTitle:'Try with bots',demoSub:'Play on your own with 3 robots to see how it works.',demoBtn:'Start a practice game',
+ demoBanner:"🤖 Practice: you're playing with 3 bots on this phone. To play with friends, create a normal room.",demoTalk:"Bots don't talk 🤐 Press “Vote now” when you're ready.",bots:['Beep','Robo Rita','Chippy'],busyDemo:'The bots are coming…',or:'or',
+ rulesRange:`<li>Each round, everyone sees the same question. The answer is always a number.</li>
+<li>On your own phone, enter a <b>range</b> (e.g. 1950–1980). Nobody sees the others' ranges until the reveal.</li>
+<li>If the answer is inside your range: <b>4 points</b> for the tightest correct range, <b>1 point</b> for every other correct one.</li>
+<li>Boosts, each usable <b>once</b> per game (one per round):<br>🦝 <b>Steal</b> — take another player's range.<br>🔀 <b>Swap</b> — two other players swap ranges.<br>✖️2 <b>Double</b> — if you're right, double points.</li>
+<li>Swaps happen first, then steals. First to <b>16 points</b> wins.</li>`,
+ rulesImp:`<li>Everyone sees their role on their own phone.</li>
+<li><b>Citizens</b> see the secret word. The <b>Impostor</b> doesn't (they may only see the category).</li>
+<li>In turn, each player says <b>one word</b> out loud related to the secret word. Then discuss!</li>
+<li>When time's up, everyone votes on their phone. The most-voted player is out (a tie means nobody).</li>
+<li>If all Impostors are out, the Citizens win. If the Impostors equal the Citizens in number, the Impostors win.</li>
+<li>In a mixed group, everyone sees the word in their own language.</li>`}
+};
+const pickLang=()=>{try{const s=localStorage.getItem('parea-lang');if(s==='el'||s==='en')return s}catch(e){}
+  return (navigator.language||'').toLowerCase().startsWith('el')?'el':'en'};
+let LANG=pickLang();
+function t(k,...a){const v=STR[LANG][k];return typeof v==='function'?v(...a):(v??k)}
+const hueOf=s=>{let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))%360;return h};
+const avatar=u=>{if(String(u).startsWith('bot'))return `<b class="av bot">🤖</b>`;const n=pname(u);return `<b class="av" style="--h:${hueOf(u)}">${esc([...n][0]||'?').toUpperCase()}</b>`};
+const seenBulbs=new Set();
+/* app name in bulbs, two strings of lights */
+const NAME_ROWS={el:['ΔΕΝ','ΕΙΜΑΙ!'],en:['NOT','ME!']};
+function nameBulbs(){let off=0;return NAME_ROWS[LANG].map((r,k)=>{const h=bulbRow(r,'hero-'+LANG+k,'big',true,off);off+=[...r].length;return h}).join('')}
+/* easter egg: tap the letters of the name in order (Δ-Ε-Ν-Ε-Ι-Μ-Α-Ι or N-O-T-M-E) */
+const eggOrder=()=>{const n=NAME_ROWS[LANG].join('').replace(/!/g,'').length;return [...Array(n).keys()]};let eggPos=0;
+function bulbRow(text,key,cls,tap,off){off=off||0;const ch=[...text];const n=ch.length;const anim=!seenBulbs.has(key);seenBulbs.add(key);
+  return `<div class="bulbs ${cls||''}${anim?' anim':''}" aria-label="${esc(text)}"><svg class="wire" viewBox="0 0 100 20" preserveAspectRatio="none" aria-hidden="true"><path d="M0 2 Q50 30 100 2"/></svg>${ch.map((c,i)=>{const y=Math.sin(Math.PI*(i+.5)/n);return `<span style="--i:${i};--y:${y.toFixed(2)}" aria-hidden="true"${tap?` data-a="bulb" data-i="${off+i}"`:''}>${c===' '?'&nbsp;':esc(c)}</span>`}).join('')}</div>`}
+const qText=i=>{const q=QA[i];return q?q[LANG]:''};
+const catName=id=>{const c=CATS.find(x=>x.id===id);return c?c[LANG]:''};
+const wordText=(cat,i)=>{const L=LANG==='el'?WORDS_EL:WORDS_EN;return (L[cat]||[])[i]||''};
+const gameName=g=>g==='range'?t('gRange'):t('gImp');
+
+/* ---------------- app state ---------------- */
+const A={db:null,uid:null,name:'',code:null,meta:null,players:{},state:null,secret:null,myInput:null,
+  inputs:{},hostdata:null,unsubs:[],hostUnsubs:[],err:'',joinCode:'',connected:true,draft:{},peek:false,
+  lastAct:null,toast:'',busy:'',demo:false,bots:[],impSet:{cat:'random',imps:1,hint:true,mins:3},fatal:''};
+try{Object.assign(A.impSet,JSON.parse(localStorage.getItem('parea-imp')||'{}'))}catch(e){}
+if(A.impSet.cat!=='random'&&!CATS.some(c=>c.id===A.impSet.cat))A.impSet.cat='random';
+const app=document.getElementById('app');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const fmt=n=>{n=Number(n);return Math.abs(n)<10000?String(n):n.toLocaleString(LANG==='el'?'el-GR':'en-US')};
+const P=p=>`rooms/${A.code}/${p}`;
+const isHost=()=>!!(A.meta&&A.meta.host===A.uid);
+const pname=u=>(A.players[u]&&A.players[u].name)||'?';
+const online=u=>!!(A.players[u]&&A.players[u].online);
+const arr=v=>Array.isArray(v)?v:(v&&typeof v==='object'?Object.values(v):[]);
+const fmtT=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+let toastT;function toast(m){A.toast=m;render();clearTimeout(toastT);toastT=setTimeout(()=>{A.toast='';render()},2200)}
+function setLang(l){LANG=l;try{localStorage.setItem('parea-lang',l)}catch(e){}document.documentElement.lang=l;render()}
+
+/* ---------------- boot / rooms ---------------- */
+function getUid(){
+  let u=null;try{u=sessionStorage.getItem('parea-uid')}catch(e){}
+  if(!u||!/^[a-z0-9]{6,24}$/.test(u)){u='u'+Math.random().toString(36).slice(2,12)+Math.random().toString(36).slice(2,6);try{sessionStorage.setItem('parea-uid',u)}catch(e){}}
+  return u;
+}
+function connErr(e){
+  if(e&&e.reject&&e.reject.reason==='version')return t('errVersion',esc(e.reject.app||''));
+  if(e&&(e.notFound||e.message==='not-found'))return t('errNotFound');
+  if(e&&e.message==='timeout')return t('errTimeout');
+  return t('errGeneric',esc((e&&(e.message||e.type))||e));
+}
+async function boot(){
+  document.documentElement.lang=LANG;
+  try{A.name=localStorage.getItem('parea-name')||''}catch(e){}
+  A.uid=getUid();
+  const q=new URLSearchParams(location.search).get('room');if(q)A.joinCode=q.toUpperCase().replace(/[^A-Z]/g,'').slice(0,4);
+  render();
+  let code=null,role=null;try{code=sessionStorage.getItem('parea-room');role=sessionStorage.getItem('parea-role')}catch(e){}
+  if(code&&A.name){
+    A.busy=t('busyResume',code);render();
+    try{
+      if(role==='host'){let tree=null;try{tree=JSON.parse(sessionStorage.getItem('parea-host-tree')||'null')}catch(e){}
+        if(!tree||!tree.rooms||!tree.rooms[code])throw new Error('no state');
+        A.db=await hostRoomWithRetry(code,tree,8)}
+      else A.db=await joinRoomDB(code);
+      wireDb();await enterRoom(code,true);
+    }catch(e){clearSession();A.err=role==='host'?t('resumeFail'):connErr(e)}
+    A.busy='';render();
+  }
+}
+function wireDb(){
+  A.db.onConnected(c=>{A.connected=c;if(c&&A.code)markOnline();render()});
+  A.db.onFatal=r=>{if(r==='version'){leaveLocal();A.err=connErr({reject:{reason:'version'}});render()}};
+}
+function clearSession(){try{['parea-room','parea-role','parea-host-tree'].forEach(k=>sessionStorage.removeItem(k))}catch(e){}}
+function randCode(){const L='ABCDEFGHJKLMNPQRSTUVWXYZ';let s='';for(let i=0;i<4;i++)s+=L[Math.floor(Math.random()*L.length)];return s}
+function saveName(){const el=document.getElementById('myname');if(el)A.name=el.value.trim().slice(0,14);try{localStorage.setItem('parea-name',A.name)}catch(e){}return A.name}
+async function createRoom(){
+  if(A.busy)return;
+  if(!saveName()){A.err=t('needName');render();return}
+  A.busy=t('busyCreate');A.err='';render();
+  try{
+    let code=null,lastErr=null;
+    for(let i=0;i<6&&!A.db;i++){code=randCode();
+      try{A.db=await hostRoomDB(code,null)}catch(e){lastErr=e;if(!(e&&e.type==='unavailable-id'))break}}
+    if(!A.db)throw lastErr||new Error('no room');
+    try{sessionStorage.setItem('parea-role','host')}catch(e){}
+    wireDb();
+    await A.db.set(`rooms/${code}/meta`,{host:A.uid,created:A.db.now(),v:APP_VERSION});
+    await enterRoom(code);
+  }catch(e){A.db=null;A.err=connErr(e)}
+  A.busy='';render();
+}
+async function startDemo(){
+  if(A.busy)return;
+  if(!saveName()){A.err=t('needName');render();return}
+  A.busy=t('busyDemo');A.err='';A.demo=true;PEER_OVERRIDE=DemoPeer;render();
+  try{
+    const code=randCode();A.db=await hostRoomDB(code,null);wireDb();
+    await A.db.set(`rooms/${code}/meta`,{host:A.uid,created:A.db.now(),v:APP_VERSION,demo:true});
+    await enterRoom(code);
+    for(const n of t('bots'))A.bots.push(await spawnBot(code,n));
+  }catch(e){leaveLocal();A.err=connErr(e)}
+  A.busy='';render();
+}
+/* a bot is a normal player that connects through the in-page network and plays by itself */
+async function spawnBot(code,name){
+  const uid='bot'+Math.random().toString(36).slice(2,10);
+  const db=await joinRoomDB(code,{uid});const R=`rooms/${code}/`;
+  await db.set(R+'players/'+uid,{name,joined:db.now(),online:true});
+  const st={};let last=null;
+  const act=()=>{const s=st.state;if(!s||!arr(s.order).includes(uid))return;let key=null,fn=null;const inp=st.input;
+    if(s.game==='range'&&s.phase==='answer'&&!(inp&&inp.round===s.round)){key='r'+s.round;fn=()=>{
+      const a=QA[s.q].a,miss=Math.random()<.3;const c=a*(1+(Math.random()-.5)*(miss?1.2:.35));
+      const w=Math.max(2,a*(.04+Math.random()*.35));let lo=Math.round(c-w/2),hi=Math.round(c+w/2);
+      const o={round:s.round,lo,hi};const u=(s.used||{})[uid]||{};if(!u.double&&Math.random()<.2)o.boost='double';
+      db.set(R+'inputs/'+uid,o).catch(()=>{})}}
+    else if(s.game==='imp'&&s.phase==='roles'&&!(inp&&inp.gid===s.gid&&inp.seen)){key='s'+s.gid;fn=()=>db.set(R+'inputs/'+uid,{gid:s.gid,seen:true}).catch(()=>{})}
+    else if(s.game==='imp'&&s.phase==='vote'&&arr(s.alive).includes(uid)&&!(inp&&inp.gid===s.gid&&inp.vround===s.round)){key='v'+s.gid+'-'+s.round;fn=()=>{
+      const sc=st.secret||{};const mates=arr(sc.partners);const opts=arr(s.alive).filter(x=>x!==uid&&!(sc.role==='imp'&&mates.includes((st.players||{})[x]&&st.players[x].name)));
+      const pick=opts[Math.floor(Math.random()*opts.length)];if(pick)db.set(R+'inputs/'+uid,{gid:s.gid,vround:s.round,vote:pick}).catch(()=>{})}}
+    if(key&&key!==last){last=key;setTimeout(fn,1400+Math.random()*2600)}};
+  db.on(R+'state',v=>{st.state=v;act()});db.on(R+'secrets/'+uid,v=>{st.secret=v;act()});
+  db.on(R+'inputs/'+uid,v=>{st.input=v;act()});db.on(R+'players',v=>{st.players=v||{}});
+  db.onDisconnectSet(R+`players/${uid}/online`,false);
+  return db;
+}
+async function joinRoom(){
+  if(A.busy)return;
+  if(!saveName()){A.err=t('needName');render();return}
+  const el=document.getElementById('code');const code=(el?el.value:A.joinCode).toUpperCase().replace(/[^A-Z]/g,'');
+  if(code.length!==4){A.err=t('code4');render();return}
+  A.busy=t('busyJoin');A.err='';render();
+  try{A.db=await joinRoomDB(code);try{sessionStorage.setItem('parea-role','player')}catch(e){}wireDb();await enterRoom(code)}
+  catch(e){if(A.db){try{A.db.close()}catch(x){}}A.db=null;A.err=connErr(e)}
+  A.busy='';render();
+}
+async function enterRoom(code,resume){
+  const meta=await A.db.get(`rooms/${code}/meta`);
+  if(!meta){A.db.close();A.db=null;clearSession();if(!resume)A.err=t('noRoom',esc(code));render();return}
+  A.code=code;A.err='';if(!A.demo){try{sessionStorage.setItem('parea-room',code)}catch(e){}
+  try{history.replaceState(null,'','?room='+code)}catch(e){}}
+  const prev=await A.db.get(P('players/'+A.uid));
+  await A.db.set(P('players/'+A.uid),{name:A.name,joined:(prev&&prev.joined)||A.db.now(),online:true});
+  markOnline();
+  const sub=(p,cb)=>A.unsubs.push(A.db.on(P(p),cb));
+  sub('meta',v=>{A.meta=v;if(!v&&A.code){leaveLocal();toast(t('roomClosed'));return}setupHost();render()});
+  sub('players',v=>{A.players=v||{};hostTick();render()});
+  sub('state',v=>{const old=A.state;A.state=v;onState(old,v);hostTick();render()});
+  sub('secrets/'+A.uid,v=>{A.secret=v;render()});
+  sub('inputs/'+A.uid,v=>{A.myInput=v;render()});
+  keepAwake();
+  render();
+}
+function markOnline(){if(!A.code)return;A.db.set(P(`players/${A.uid}/online`),true).catch(()=>{});A.db.onDisconnectSet(P(`players/${A.uid}/online`),false)}
+let hostTimer=null;
+function setupHost(){
+  if(!isHost()||A.hostUnsubs.length)return;
+  A.hostUnsubs.push(A.db.on(P('inputs'),v=>{A.inputs=v||{};hostTick()}));
+  A.hostUnsubs.push(A.db.on(P('hostdata'),v=>{A.hostdata=v;hostTick()}));
+  clearInterval(hostTimer);hostTimer=setInterval(hostTick,1000);
+}
+function leaveLocal(){
+  A.bots.forEach(b=>{try{b.close()}catch(e){}});A.bots=[];
+  A.unsubs.concat(A.hostUnsubs).forEach(u=>{try{u()}catch(e){}});A.unsubs=[];A.hostUnsubs=[];clearInterval(hostTimer);
+  if(A.db){try{A.db.close()}catch(e){}}
+  Object.assign(A,{db:null,code:null,meta:null,players:{},state:null,secret:null,myInput:null,inputs:{},hostdata:null,lastAct:null,draft:{},peek:false,connected:true});
+  clearSession();try{history.replaceState(null,'',location.pathname)}catch(e){}
+  if(A.demo){A.demo=false;PEER_OVERRIDE=null}
+  releaseWake();render();
+}
+async function leaveRoom(){
+  const code=A.code;
+  try{if(isHost())await A.db.remove(`rooms/${code}`);else await A.db.remove(`rooms/${code}/players/${A.uid}`)}catch(e){}
+  leaveLocal();
+}
+function onState(old,s){
+  if(!old||!s||old.phase!==s.phase||old.round!==s.round||old.gid!==s.gid){A.draft={};A.peek=false}
+}
+function shareLink(){
+  const url=location.origin+location.pathname+'?room='+A.code;
+  if(navigator.share){navigator.share({title:t('appName'),text:t('shareText',A.code),url}).catch(()=>{});return}
+  try{navigator.clipboard.writeText(url).then(()=>toast(t('linkCopied')),()=>toast(url))}catch(e){toast(url)}
+}
+let wake=null;
+async function keepAwake(){try{if('wakeLock' in navigator&&!wake&&document.visibilityState==='visible'){wake=await navigator.wakeLock.request('screen');wake.addEventListener('release',()=>{wake=null})}}catch(e){}}
+function releaseWake(){try{wake&&wake.release()}catch(e){}wake=null}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&A.code)keepAwake()});
+
+/* ---------------- host engine ---------------- */
+function hostAct(key,fn){if(A.lastAct===key)return;A.lastAct=key;fn()}
+function participants(){return Object.entries(A.players).filter(([u,p])=>p.online).sort((a,b)=>(a[1].joined||0)-(b[1].joined||0)).map(([u])=>u)}
+const activeOf=list=>arr(list).filter(online);
+function hostTick(){
+  if(!isHost()||!A.state)return;const s=A.state;
+  if(s.game==='range'&&s.phase==='answer'){
+    if(!A.hostdata||A.hostdata.round!==s.round)return;
+    const subs={};for(const u of arr(s.order)){const i=A.inputs[u];if(i&&i.round===s.round)subs[u]=true}
+    if(JSON.stringify(Object.keys(subs).sort())!==JSON.stringify(Object.keys(s.submitted||{}).sort()))A.db.set(P('state/submitted'),subs);
+    const act=activeOf(s.order);
+    if(act.length&&act.every(u=>subs[u]))hostAct('rr-'+s.round,()=>resolveRange());
+  }
+  if(s.game==='imp'){
+    if(s.phase==='roles'){const act=activeOf(s.order);
+      if(act.length&&act.every(u=>{const i=A.inputs[u];return i&&i.gid===s.gid&&i.seen}))hostAct('disc-'+s.gid,()=>startDiscuss())}
+    else if(s.phase==='discuss'&&A.db.now()>=s.endsAt)hostAct(`vote-${s.gid}-${s.round}`,()=>A.db.update(P('state'),{phase:'vote',voted:null}));
+    else if(s.phase==='vote'){
+      const voted={};for(const u of arr(s.alive)){const i=A.inputs[u];if(i&&i.gid===s.gid&&i.vround===s.round&&i.vote)voted[u]=true}
+      if(JSON.stringify(Object.keys(voted).sort())!==JSON.stringify(Object.keys(s.voted||{}).sort()))A.db.set(P('state/voted'),voted);
+      const act=activeOf(s.alive);
+      if(act.length&&act.every(u=>voted[u]))hostAct(`tally-${s.gid}-${s.round}`,()=>tally());
+    }
+  }
+}
+/* ---- Ballpark / Στο Περίπου (host sends question index; each phone shows its own language) ---- */
+async function startRange(){
+  const order=participants();if(order.length<2){toast(t('need2'));return}
+  const deck=shuffle(QA.map((_,i)=>i));
+  const scores={},used={};order.forEach(u=>{scores[u]=0;used[u]={steal:false,swap:false,double:false}});
+  A.lastAct=null;
+  await A.db.remove(P('inputs'));
+  await A.db.set(P('hostdata'),{deck,qi:0,round:1,ans:QA[deck[0]].a});
+  await A.db.set(P('state'),{game:'range',phase:'answer',round:1,order,scores,used,q:deck[0],target:16,gid:Date.now()});
+}
+async function rangeNext(){
+  const s=A.state,h=A.hostdata;let qi=h.qi+1,deck=h.deck;
+  if(qi>=deck.length){deck=shuffle(QA.map((_,i)=>i));qi=0}
+  const round=s.round+1;
+  await A.db.set(P('hostdata'),{deck,qi,round,ans:QA[deck[qi]].a});
+  await A.db.update(P('state'),{phase:'answer',round,q:deck[qi],reveal:null,submitted:null});
+}
+function resolveRange(){
+  const s=A.state,ans=A.hostdata.ans,order=arr(s.order);
+  const used=JSON.parse(JSON.stringify(s.used||{}));const scores={...(s.scores||{})};
+  const entries=order.map(u=>{const i=A.inputs[u];if(!i||i.round!==s.round)return null;
+    const e={p:u,boost:i.boost||null,lo:i.lo,hi:i.hi,target:i.target,a:i.a,b:i.b};
+    if(e.boost&&(!used[u]||used[u][e.boost]))e.boost=null;
+    if(e.boost)used[u][e.boost]=true;
+    return e}).filter(Boolean);
+  const fin={},notes=[];
+  entries.forEach(e=>{if(e.boost!=='steal'&&typeof e.lo==='number'&&typeof e.hi==='number')fin[e.p]={lo:Math.min(e.lo,e.hi),hi:Math.max(e.lo,e.hi)}});
+  entries.filter(e=>e.boost==='swap').forEach(e=>{const X=fin[e.a],Y=fin[e.b];
+    if(X&&Y){fin[e.a]=Y;fin[e.b]=X;notes.push({k:'swap',p:e.p,a:e.a,b:e.b})}else notes.push({k:'swapx',p:e.p})});
+  const snap=JSON.parse(JSON.stringify(fin));
+  entries.filter(e=>e.boost==='steal').forEach(e=>{const src=snap[e.target];if(src)fin[e.p]={...src};notes.push({k:'steal',p:e.p,a:e.target})});
+  const correct=order.filter(u=>fin[u]&&fin[u].lo<=ans&&ans<=fin[u].hi);
+  const minW=Math.min(...correct.map(u=>fin[u].hi-fin[u].lo));
+  const rows=order.map(u=>{const e=entries.find(x=>x.p===u);const ok=correct.includes(u);
+    let pts=ok?(fin[u].hi-fin[u].lo===minW?4:1):0;
+    if(e&&e.boost==='double'){if(ok)notes.push({k:'double',p:u});pts*=2}
+    scores[u]=(scores[u]||0)+pts;
+    return {u,lo:fin[u]?fin[u].lo:null,hi:fin[u]?fin[u].hi:null,ok,pts,boost:e?e.boost:null}});
+  const top=Math.max(...order.map(u=>scores[u]));const leaders=order.filter(u=>scores[u]===top);
+  const winner=top>=s.target&&leaders.length===1?leaders[0]:null;
+  A.db.update(P('state'),{phase:winner?'over':'reveal',reveal:{ans,q:s.q,rows,notes},scores,used,winner,submitted:null});
+}
+const noteText=n=>n.k==='swap'?t('nSwap',esc(pname(n.p)),esc(pname(n.a)),esc(pname(n.b))):n.k==='swapx'?t('nSwapX',esc(pname(n.p))):n.k==='steal'?t('nSteal',esc(pname(n.p)),esc(pname(n.a))):t('nDouble',esc(pname(n.p)));
+/* ---- Impostor (host sends category id + word index; each phone shows its own language) ---- */
+async function startImp(){
+  const order=participants();if(order.length<3){toast(t('need3'));return}
+  try{localStorage.setItem('parea-imp',JSON.stringify(A.impSet))}catch(e){}
+  const S=A.impSet;const maxImp=order.length>=7?3:order.length>=5?2:1;const n=Math.min(S.imps,maxImp);
+  const cat=S.cat==='random'||!CATS.some(c=>c.id===S.cat)?shuffle(CATS.map(c=>c.id))[0]:S.cat;
+  const wi=Math.floor(Math.random()*WORDS_EN[cat].length);
+  const imps=shuffle(order).slice(0,n);const gid=Date.now();
+  const secrets={};
+  order.forEach(u=>{const imp=imps.includes(u);
+    secrets[u]=imp?{gid,role:'imp',cat:S.hint?cat:null,partners:imps.filter(x=>x!==u).map(pname)}:{gid,role:'cit',cat,wi}});
+  A.lastAct=null;
+  await A.db.remove(P('inputs'));
+  await A.db.set(P('secrets'),secrets);
+  await A.db.set(P('hostdata'),{gid,cat,wi,imps});
+  await A.db.set(P('state'),{game:'imp',phase:'roles',gid,order,alive:order,round:1,impCount:n,mins:S.mins,starter:shuffle(order)[0]});
+}
+function startDiscuss(){A.db.update(P('state'),{phase:'discuss',endsAt:A.db.now()+A.state.mins*60000})}
+function tally(){
+  const s=A.state,h=A.hostdata;const alive=arr(s.alive);const counts={};
+  for(const u of alive){const i=A.inputs[u];if(i&&i.gid===s.gid&&i.vround===s.round&&i.vote&&alive.includes(i.vote))counts[i.vote]=(counts[i.vote]||0)+1}
+  const max=Math.max(0,...Object.values(counts));const tops=Object.keys(counts).filter(u=>counts[u]===max);
+  const base={round:s.round+1,phase:'discuss',endsAt:A.db.now()+s.mins*60000,voted:null,lastVotes:counts};
+  if(!max||tops.length>1){A.db.update(P('state'),{...base,starter:shuffle(alive)[0],last:{k:'tie'}});return}
+  const out=tops[0];const left=alive.filter(u=>u!==out);const imps=arr(h.imps);const wasImp=imps.includes(out);
+  const impsLeft=left.filter(u=>imps.includes(u)).length,cits=left.length-impsLeft;
+  if(impsLeft===0||impsLeft>=cits){
+    A.db.update(P('state'),{phase:'over',alive:left,win:impsLeft===0?'cit':'imp',elim:{u:out,wasImp},reveal:{cat:h.cat,wi:h.wi,imps},lastVotes:counts,voted:null});return}
+  A.db.update(P('state'),{...base,alive:left,starter:shuffle(left)[0],elim:{u:out,wasImp},last:{k:wasImp?'impOut':'citOut',u:out,n:impsLeft}});
+}
+const lastText=l=>!l?'':l.k==='tie'?t('lTie'):l.k==='impOut'?t('lImpOut',esc(pname(l.u)),l.n):t('lCitOut',esc(pname(l.u)));
+function backToLobby(){A.lastAct=null;A.db.set(P('state'),{phase:'lobby'});A.db.remove(P('secrets'));A.db.remove(P('inputs'));A.db.remove(P('hostdata'))}
+
+/* ---------------- player actions ---------------- */
+function keepDraft(){const lo=document.getElementById('lo'),hi=document.getElementById('hi');if(lo)A.draft.lo=lo.value;if(hi)A.draft.hi=hi.value}
+async function submitRange(){
+  keepDraft();const d=A.draft,s=A.state;const inp={round:s.round};
+  if(d.boost!=='steal'){const lo=parseFloat(String(d.lo).replace(',','.')),hi=parseFloat(String(d.hi).replace(',','.'));
+    if(isNaN(lo)||isNaN(hi)){A.err=t('errBoth');render();return}
+    inp.lo=Math.min(lo,hi);inp.hi=Math.max(lo,hi)}
+  if(d.boost==='steal'){if(!d.target){A.err=t('errSteal');render();return}inp.target=d.target}
+  if(d.boost==='swap'){if(!d.a||!d.b){A.err=t('errSwap');render();return}inp.a=d.a;inp.b=d.b}
+  if(d.boost)inp.boost=d.boost;
+  A.err='';await A.db.set(P('inputs/'+A.uid),inp);
+}
+
+/* ---------------- views ---------------- */
+const langSwitch=()=>`<div class="seg lang">${['el','en'].map(l=>`<button data-a="lang" data-v="${l}" class="${LANG===l?'on':''}">${l==='el'?'🇬🇷 Ελληνικά':'🇬🇧 English'}</button>`).join('')}</div>`;
+const banner=()=>A.demo?`<div class="note">${t('demoBanner')}</div>`:A.code&&isHost()?`<div class="note">${t('hostBanner')}</div>`:'';
+const rulesRow=()=>`<div class="rulesrow"><span>${t('rules')}</span><button class="x" data-a="rules" data-g="range">🎯 ${t('gRange')}</button><button class="x" data-a="rules" data-g="imp">🕵️ ${t('gImp')}</button></div>`;
+function homeView(){
+  return `${langSwitch()}<header class="hero"><h1 class="sr">${t('appName')}</h1>${A.egg?`<div class="egg" data-a="egg-off" title="🙂">${bulbRow('TOM','egg-a','big')}${bulbRow('MBERNIS','egg-b','mid')}</div>`:`<div class="name">${nameBulbs()}</div>`}<p class="sub">${t('tagline')}</p></header>
+  <div class="box"><div class="lbl" style="margin-top:0">${t('yourName')}</div><input id="myname" maxlength="14" placeholder="${t('namePh')}" value="${esc(A.name)}" autocomplete="off"></div>
+  <div class="box"><h3>${t('newRoom')}</h3><p class="mut" style="margin:6px 0 12px">${t('newRoomSub')}</p><button class="btn" data-a="create"${A.busy?' disabled':''}>${t('create')}</button></div>
+  <div class="box demo-box"><h3>🤖 ${t('demoTitle')}</h3><p class="mut" style="margin:6px 0 12px">${t('demoSub')}</p><button class="btn sec" data-a="demo"${A.busy?' disabled':''}>${t('demoBtn')}</button></div>
+  <div class="box"><h3>${t('joinRoom')}</h3><div class="row" style="margin-top:10px"><input id="code" maxlength="4" placeholder="${t('codePh')}" value="${esc(A.joinCode)}" style="text-transform:uppercase;letter-spacing:4px;font-weight:800;text-align:center" autocomplete="off"><button class="btn sm" data-a="join" style="flex:none"${A.busy?' disabled':''}>${t('join')}</button></div></div>
+  <div class="err">${A.fatal||A.err}</div>${A.busy?`<div class="mut center">⏳ ${esc(A.busy)}</div>`:''}
+  ${rulesRow()}<div class="mut center" style="font-size:12px;opacity:.6">${t('version')} ${APP_VERSION}</div>`;
+}
+function playersList(){
+  return Object.entries(A.players).sort((a,b)=>(a[1].joined||0)-(b[1].joined||0)).map(([u,p])=>
+    `<div class="chip${p.online?'':' off'}">${avatar(u)}<span>${esc(p.name)}${u===A.uid?' '+t('you'):''}</span>${A.meta&&A.meta.host===u?'<i class="crown" title="host">👑</i>':''}<i class="dot${p.online?' on':''}"></i></div>`).join('');
+}
+function topBar(label){return `<div class="top"><span class="mut">${label}</span><div class="row" style="flex:none;gap:6px"><button class="x" data-a="lang" data-v="${LANG==='el'?'en':'el'}" title="Language">${LANG==='el'?'EN':'ΕΛ'}</button><span class="codepill">${esc(A.code)}</span>${A.connected?'':`<span class="badc">${t('offline')}</span>`}<button class="x" data-a="leave">${t('leave')}</button></div></div>`}
+function lobbyView(){
+  const host=isHost(),n=participants().length,S=A.impSet;
+  const maxImp=n>=7?3:n>=5?2:1;
+  const seg=(key,opts)=>`<div class="seg">${opts.map(([v,l])=>`<button data-a="set" data-k="${key}" data-v="${v}" class="${String(S[key])===String(v)?'on':''}">${l}</button>`).join('')}</div>`;
+  return `${topBar(t('lobby'))}${banner()}
+  <div class="box center codebox"><div class="mut">${t('roomCode')}</div>${bulbRow(A.code,'code-'+A.code)}${A.demo?'':`<button class="btn sec" data-a="share">${t('shareBtn')}</button>`}</div>
+  <div class="box"><h3>${t('players')} (${n})</h3><div class="chips" style="margin-top:10px">${playersList()}</div></div>
+  ${host?`<button class="ticket" data-a="start-range"><span class="stub">🎯</span><span class="meta"><b>${t('gRange')}</b><span>${t('rangeDesc')}</span><em>${t('pl2')}</em></span></button>
+  <button class="ticket red" data-a="start-imp"><span class="stub">🕵️</span><span class="meta"><b>${t('gImp')}</b><span>${t('impDesc')}</span><em>${t('pl3')}</em></span></button>
+  <div class="box settings">
+    <div class="lbl">${t('category')}</div><select id="cat"><option value="random">${t('random')}</option>${CATS.map(c=>`<option value="${c.id}"${S.cat===c.id?' selected':''}>${c[LANG]}</option>`).join('')}</select>
+    <div class="lbl">${t('impostors')}</div>${seg('imps',[[1,'1'],...(maxImp>=2?[[2,'2']]:[]),...(maxImp>=3?[[3,'3']]:[])])}
+    <div class="lbl">${t('hintQ')}</div>${seg('hint',[[true,t('yes')],[false,t('no')]])}
+    <div class="lbl">${t('talkTime')}</div>${seg('mins',[[1,'1′'],[2,'2′'],[3,'3′'],[5,'5′']])}</div>`
+  :`<div class="box center"><div style="font-size:40px">⏳</div><div class="mut">${t('waitHost')}</div></div>`}
+  ${rulesRow()}`;
+}
+function spectatorView(){
+  return `${topBar(t('inProgress'))}<div class="box center"><div style="font-size:40px">👀</div><div class="big" style="font-size:22px">${t('startedTitle')}</div><p class="mut" style="margin-top:8px">${t('nextGame')}</p></div>
+  <div class="box"><h3>${t('players')}</h3><div class="chips" style="margin-top:10px">${playersList()}</div></div>`;
+}
+function scoreboard(s){
+  const o=arr(s.order).slice().sort((a,b)=>(s.scores[b]||0)-(s.scores[a]||0));
+  return `<div class="box"><h3>${t('scores')}</h3>${o.map(u=>`<div style="margin:8px 0"><div class="row" style="justify-content:space-between"><b style="flex:none">${esc(pname(u))}${u===A.uid?' '+t('you'):''}</b><span style="flex:none">${s.scores[u]||0}/${s.target}</span></div><div class="bar"><i style="width:${Math.min(100,(s.scores[u]||0)/s.target*100)}%"></i></div></div>`).join('')}</div>`;
+}
+function rangeAnswerView(s){
+  const mine=A.myInput&&A.myInput.round===s.round;
+  const waiting=arr(s.order).filter(u=>!(s.submitted||{})[u]);
+  const hostBtn=isHost()?`<button class="btn sec" data-a="force-reveal">${t('forceReveal')}</button>`:'';
+  if(mine)return `${topBar(t('round',s.round))}<div class="box"><div class="q">${esc(qText(s.q))}</div></div>
+    <div class="box center"><div style="font-size:44px">🔒</div><div class="big" style="font-size:22px">${t('locked')}</div>
+    <p class="mut" style="margin-top:8px">${A.myInput.boost==='steal'?t('stealing'):`${t('yourRange')}: <b>${fmt(A.myInput.lo)}–${fmt(A.myInput.hi)}</b>`}</p>
+    <p class="mut" style="margin-top:10px">${t('waitingFor')}: ${waiting.map(u=>esc(pname(u))+(online(u)?'':t('offTag'))).join(', ')||'…'}</p></div>${hostBtn}`;
+  const u=(s.used||{})[A.uid]||{},d=A.draft,others=arr(s.order).filter(x=>x!==A.uid);
+  const b=(k,ic,lb)=>`<button class="boost${d.boost===k?' on':''}" data-a="boost" data-k="${k}"${u[k]?' disabled':''}><span>${ic}</span>${lb}${u[k]?`<br><small>${t('used')}</small>`:''}</button>`;
+  let pick='';
+  if(d.boost==='steal')pick=`<div class="lbl">${t('stealQ')}</div><div class="pick">${others.map(o=>`<button data-a="pt" data-p="${o}" class="${d.target===o?'on':''}">${esc(pname(o))}</button>`).join('')}</div>`;
+  if(d.boost==='swap')pick=others.length<2?`<div class="mut" style="margin-top:8px">${t('swapNeed3')}</div>`:`<div class="lbl">${t('swapQ')}</div><div class="pick">${others.map(o=>`<button data-a="ps" data-p="${o}" class="${d.a===o||d.b===o?'on':''}">${esc(pname(o))}</button>`).join('')}</div>`;
+  const st=d.boost==='steal';
+  return `${topBar(t('round',s.round)+' · '+t('pts',s.scores[A.uid]||0))}<div class="box"><div class="q">${esc(qText(s.q))}</div></div>
+  <div class="box"><div class="lbl" style="margin-top:0">${st?t('stealNote'):t('yourRange')}</div>
+    <div class="row"><input id="lo" type="number" inputmode="decimal" placeholder="${t('from')}" value="${esc(d.lo??'')}"${st?' disabled':''}><span style="flex:none">–</span><input id="hi" type="number" inputmode="decimal" placeholder="${t('to')}" value="${esc(d.hi??'')}"${st?' disabled':''}></div>
+    <div class="lbl">${t('boostsL')}</div>
+    <div class="boosts">${b('steal','🦝',t('bSteal'))}${b('swap','🔀',t('bSwap'))}${b('double','✖️2',t('bDouble'))}</div>${pick}
+    <div class="err">${A.err}</div><button class="btn" data-a="submit-range">${t('lockBtn')}</button></div>
+  <div class="mut center">${t('answered',Object.keys(s.submitted||{}).length,arr(s.order).length)}</div>${hostBtn}`;
+}
+function rangeRevealView(s){
+  const r=s.reveal||{rows:[],notes:[]};
+  const rows=arr(r.rows).slice().sort((a,b)=>b.pts-a.pts).map(x=>`<tr${x.u===A.uid?' class="me"':''}><td>${esc(pname(x.u))}${x.boost?' '+({steal:'🦝',swap:'🔀',double:'✖️2'}[x.boost]):''}</td><td class="r">${x.lo!=null?fmt(x.lo)+'–'+fmt(x.hi):'—'}</td><td class="r ${x.ok?'good':'badc'}">${x.ok?'+'+x.pts:'✗'}</td></tr>`).join('');
+  const host=isHost();const notes=arr(r.notes);
+  return `${topBar(t('round',s.round))}<div class="box"><div class="q" style="font-size:17px">${esc(qText(r.q))}</div><div class="ans">${fmt(r.ans)}</div></div>
+  ${notes.length?`<div class="box mut">${notes.map(noteText).join('<br>')}</div>`:''}
+  <div class="box"><table><tr><th>${t('player')}</th><th class="r">${t('rangeH')}</th><th class="r">${t('ptsH')}</th></tr>${rows}</table></div>
+  ${s.phase==='over'?`<div class="box center"><div class="confetti">🏆</div><div class="big">${t('winFor',esc(pname(s.winner)))}</div></div>`:''}
+  ${scoreboard(s)}
+  ${host?(s.phase==='over'?`<button class="btn" data-a="start-range">${t('again')}</button><button class="btn sec" data-a="lobby">${t('toLobby')}</button>`:`<button class="btn" data-a="range-next">${t('nextQ')}</button><button class="btn sec" data-a="lobby">${t('endLobby')}</button>`)
+    :`<div class="mut center">${s.phase==='over'?t('hostWillNew'):t('hostWillNext')}</div>`}`;
+}
+function roleCard(s){
+  const sc=A.secret&&A.secret.gid===s.gid?A.secret:null;
+  if(!sc)return `<div class="box center mut">${t('loadingRole')}</div>`;
+  if(sc.role==='imp')return `<div class="box reveal imp flip"><div style="font-size:54px">🕵️</div><div class="word">IMPOSTOR</div><div class="rs">${t('impNoWord')}</div>${sc.cat?`<div>${t('category')}: <b>${esc(catName(sc.cat))}</b></div>`:''}${arr(sc.partners).length?`<div>${t('partner')}: <b>${arr(sc.partners).map(esc).join(', ')}</b></div>`:''}</div>`;
+  return `<div class="box reveal cit flip"><div class="rs">${t('citizenL')}</div><div class="word">${esc(wordText(sc.cat,sc.wi))}</div><div class="rs">${t('category')}: ${esc(catName(sc.cat))}</div></div>`;
+}
+function impView(s){
+  const inGame=arr(s.alive).includes(A.uid),host=isHost();
+  if(s.phase==='roles'){
+    const seen=A.myInput&&A.myInput.gid===s.gid&&A.myInput.seen;
+    return `${topBar(t('rolesL'))}
+    ${A.peek?roleCard(s):`<div class="box reveal back" data-a="peek" role="button" tabindex="0"><div style="font-size:54px">🃏</div><div class="big" style="font-size:22px">${t('tapRole')}</div><div class="mut">${t('hideScreen')}</div></div>`}
+    ${A.peek?`<button class="btn" data-a="seen"${seen?' disabled':''}>${seen?t('seenWait'):t('seenBtn')}</button>`:''}
+    ${seen&&!A.peek?`<div class="mut center">${t('seenDone')}</div>`:''}
+    ${host?`<button class="btn sec" data-a="force-discuss">${t('forceDiscuss')}</button>`:''}`;
+  }
+  const lastBox=s.last?`<div class="box center">${lastText(s.last)}</div>`:'';
+  const aliveChips=`<div class="chips" style="margin-top:8px;justify-content:center">${arr(s.order).map(u=>`<div class="chip${arr(s.alive).includes(u)?'':' out'}">${avatar(u)}<span>${esc(pname(u))}${u===A.uid?' '+t('you'):''}</span></div>`).join('')}</div>`;
+  const peekBtn=`<button class="btn sec" data-a="peek">${A.peek?t('hideRole'):t('showRole')}</button>${A.peek?roleCard(s):''}`;
+  if(s.phase==='discuss'){
+    const left=Math.max(0,Math.ceil((s.endsAt-A.db.now())/1000));
+    return `${topBar(t('gImp')+' · '+t('round',s.round))}${lastBox}
+    <div class="box center"><div class="mut">${t('starts')}</div><div class="big" style="margin:6px 0">${esc(pname(s.starter))}</div><div class="mut">${t('clueInfo')}</div>${aliveChips}</div>
+    <div class="box"><div class="timer${left<=10?' low':''}" id="timer">${fmtT(left)}</div><div class="tbar"><i id="tbar" style="width:${Math.min(100,left/(s.mins*60)*100)}%"></i></div>
+    ${host?`<div class="row" style="margin-top:8px"><button class="btn sec" data-a="add30">+30″</button><button class="btn" data-a="vote-now">${t('voteNow')}</button></div>`:''}</div>
+    ${A.demo?`<div class="note">${t('demoTalk')}</div>`:''}${inGame?'':`<div class="box center mut">${t('eliminated')}</div>`}${peekBtn}`;
+  }
+  if(s.phase==='vote'){
+    const myVote=A.myInput&&A.myInput.gid===s.gid&&A.myInput.vround===s.round?A.myInput.vote:null;
+    const voted=s.voted||{};
+    return `${topBar(t('voteL'))}
+    <div class="box center"><h2>${t('whoImp')}</h2><div class="mut" style="margin-top:6px">${inGame?t('voteInfo'):t('eliminated')}</div></div>
+    ${inGame?`<div class="vote">${arr(s.alive).filter(u=>u!==A.uid).map(u=>`<button data-a="vote" data-p="${u}" class="${myVote===u?'on':''}">${avatar(u)}<span>${esc(pname(u))}</span></button>`).join('')}</div>`:''}
+    <div class="lbl center" style="margin:4px 0 -4px">${t('votedL')}</div><div class="chips cen">${arr(s.alive).map(u=>`<div class="chip${voted[u]?' yes':' wait'}">${avatar(u)}<span>${esc(pname(u))}</span><i class="tick">${voted[u]?'✓':'…'}</i></div>`).join('')}</div>
+    ${host?`<button class="btn sec" data-a="force-tally">${t('closeVote')}</button>`:''}${peekBtn}`;
+  }
+  if(s.phase==='over'){
+    const cit=s.win==='cit',r=s.reveal||{};const votes=s.lastVotes||{};
+    return `${topBar(t('endL'))}<div class="box center" style="padding:24px 16px"><div class="confetti">${cit?'🎉':'🕵️'}</div>
+    <div class="big">${cit?t('citWin'):(s.impCount>1?t('impsWin'):t('impWin'))}</div>
+    ${s.elim?`<div class="mut" style="margin-top:8px">${t('lastOut',esc(pname(s.elim.u)),s.elim.wasImp?t('roleImp'):t('roleCit'))}</div>`:''}</div>
+    <div class="box center"><div class="mut">${t('wordWas')}</div><div class="word glow">${esc(wordText(r.cat,r.wi))}</div>
+    <div class="mut">${esc(catName(r.cat))}</div>
+    <div class="mut" style="margin-top:8px">${s.impCount>1?'Impostors':'Impostor'}: <b>${arr(r.imps).map(u=>esc(pname(u))).join(', ')}</b></div>
+    ${Object.keys(votes).length?`<div class="mut" style="margin-top:8px">${t('votesL')}: ${Object.entries(votes).map(([u,c])=>`${esc(pname(u))} ${c}`).join(' · ')}</div>`:''}</div>
+    ${host?`<button class="btn" data-a="start-imp">${t('newRound')}</button><button class="btn sec" data-a="lobby">${t('toLobby')}</button>`:`<div class="mut center">${t('hostWillRound')}</div>`}`;
+  }
+  return '';
+}
+function rulesView(g){
+  return `<div class="top"><h2>${g==='range'?'🎯 '+t('gRange'):'🕵️ '+t('gImp')}</h2></div><div class="box"><ul class="rules">${g==='range'?t('rulesRange'):t('rulesImp')}</ul></div><button class="btn sec" data-a="close-rules">${t('back')}</button>`;
+}
+function render(){
+  document.title=t('appName')+' — Party Games';
+  const keep={};app.querySelectorAll('input[id]').forEach(i=>keep[i.id]=i.value);
+  const act=document.activeElement&&document.activeElement.id;
+  let h;const s=A.state;
+  if(A.rules)h=rulesView(A.rules);
+  else if(!A.code)h=homeView();
+  else if(!A.meta)h=`<div class="box center mut">${t('connecting')}</div>`;
+  else if(!s||s.phase==='lobby')h=lobbyView();
+  else if(!arr(s.order).includes(A.uid))h=spectatorView();
+  else if(s.game==='range')h=s.phase==='answer'?rangeAnswerView(s):rangeRevealView(s);
+  else if(s.game==='imp')h=impView(s);
+  else h=lobbyView();
+  if(A.toast)h+=`<div class="toast">${esc(A.toast)}</div>`;
+  app.innerHTML=h;
+  for(const id in keep){const el=document.getElementById(id);if(el)el.value=keep[id]}
+  if(act){const el=document.getElementById(act);if(el)el.focus()}
+}
+setInterval(()=>{const el=document.getElementById('timer');if(el&&A.db&&A.state&&A.state.endsAt){const l=Math.max(0,Math.ceil((A.state.endsAt-A.db.now())/1000));el.textContent=fmtT(l);el.classList.toggle('low',l<=10);const b=document.getElementById('tbar');if(b)b.style.width=Math.min(100,l/(A.state.mins*60)*100)+'%'}},500);
+
+/* ---------------- input ---------------- */
+app.addEventListener('click',e=>{
+  const b=e.target.closest('[data-a]');if(!b||b.tagName==='SELECT'||b.disabled)return;
+  const a=b.dataset.a,s=A.state;
+  const run=p=>Promise.resolve(p).catch(err=>{console.error(err);toast(t('error')+(err.message||err))});
+  switch(a){
+    case'lang':if(!A.code)saveName();eggPos=0;setLang(b.dataset.v);break;
+    case'create':run(createRoom());break;
+    case'join':run(joinRoom());break;
+    case'demo':run(startDemo());break;
+    case'bulb':{const i=+b.dataset.i;b.classList.add('tapped');
+      const EO=eggOrder();if(i===EO[eggPos])eggPos++;else eggPos=(i===EO[0])?1:0;
+      if(eggPos===EO.length){eggPos=0;saveName();A.egg=true;seenBulbs.delete('egg-a');seenBulbs.delete('egg-b');render();try{navigator.vibrate&&navigator.vibrate([40,40,80])}catch(e){}}
+      break}
+    case'egg-off':saveName();A.egg=false;eggPos=0;[...seenBulbs].filter(k=>k.startsWith('hero')).forEach(k=>seenBulbs.delete(k));render();break;
+    case'leave':run(leaveRoom());break;
+    case'share':shareLink();break;
+    case'rules':if(!A.code)saveName();A.rules=b.dataset.g;render();break;
+    case'close-rules':A.rules=null;render();break;
+    case'set':{const k=b.dataset.k,v=b.dataset.v;A.impSet[k]=k==='hint'?v==='true':+v;render();break}
+    case'start-range':run(startRange());break;
+    case'start-imp':run(startImp());break;
+    case'lobby':run(backToLobby());break;
+    case'range-next':run(rangeNext());break;
+    case'force-reveal':if(isHost()&&A.hostdata)hostAct('rr-'+s.round,()=>resolveRange());break;
+    case'boost':{keepDraft();const k=b.dataset.k;A.draft.boost=A.draft.boost===k?null:k;A.draft.target=A.draft.a=A.draft.b=null;A.err='';render();break}
+    case'pt':keepDraft();A.draft.target=b.dataset.p;render();break;
+    case'ps':{keepDraft();const p=b.dataset.p,d=A.draft;if(d.a===p)d.a=null;else if(d.b===p)d.b=null;else if(!d.a)d.a=p;else if(!d.b)d.b=p;else{d.a=d.b;d.b=p}render();break}
+    case'submit-range':run(submitRange());break;
+    case'peek':A.peek=!A.peek;render();break;
+    case'seen':A.peek=false;run(A.db.set(P('inputs/'+A.uid),{gid:s.gid,seen:true}));render();break;
+    case'force-discuss':hostAct('disc-'+s.gid,()=>startDiscuss());break;
+    case'add30':run(A.db.update(P('state'),{endsAt:Math.max(s.endsAt,A.db.now())+30000}));break;
+    case'vote-now':hostAct(`vote-${s.gid}-${s.round}`,()=>run(A.db.update(P('state'),{phase:'vote',voted:null})));break;
+    case'vote':run(A.db.set(P('inputs/'+A.uid),{gid:s.gid,vround:s.round,vote:b.dataset.p}));break;
+    case'force-tally':hostAct(`tally-${s.gid}-${s.round}`,()=>tally());break;
+  }
+});
+app.addEventListener('change',e=>{if(e.target.id==='cat')A.impSet.cat=e.target.value});
+app.addEventListener('keydown',e=>{if(e.key!=='Enter')return;const id=e.target.id;
+  if(id==='code')joinRoom();else if(id==='lo'||id==='hi')submitRange()});
+boot();
+
+</script>
+</body>
+</html>
