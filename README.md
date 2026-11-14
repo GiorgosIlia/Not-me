@@ -1,4 +1,4 @@
-# Δεν είμαι! / Not Me! — Party Games (version 2.3.0)
+# Δεν είμαι! / Not Me! — Party Games (version 2.3.1)
 
 Two online party games, **Στο Περίπου / Ballpark** and **Impostor**, in **Greek and English**. The app is called **«Δεν είμαι!»** in Greek and **"Not Me!"** in English, and the name switches with the language. One person creates a room and sends the link, and everyone plays from their own phone. There's no database and nobody needs an account: **the host's phone runs the room**, and the other phones connect directly to it.
 
