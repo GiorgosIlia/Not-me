@@ -177,6 +177,23 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 @keyframes flicker{0%{background:#3A3F6E;box-shadow:none;color:#5C6197}20%{background:radial-gradient(circle at 34% 28%,#FFF6CF 0 12%,#FFD76E 38%,var(--bulb) 60%,var(--bulb-deep) 100%);box-shadow:0 0 30px rgba(255,201,74,.9);color:#3A2600}35%{background:#3A3F6E;box-shadow:none;color:#5C6197}55%{}100%{}}
 
 .name .bulbs+.bulbs{padding-top:4px;margin-top:-6px}
+
+/* removing players + join requests */
+.kickbtn{border:0;background:rgba(239,90,60,.18);color:#FFB3A3;border-radius:999px;min-width:24px;height:24px;padding:0 7px;font:700 12px var(--body);cursor:pointer;margin-left:2px}
+.kickbtn.sure{background:var(--tomato);color:#fff}
+.chip.arm{box-shadow:0 0 0 1.5px var(--tomato) inset}
+.x.on{border-color:var(--bulb);color:var(--bulb)}
+.playerspanel{margin-top:-2px}
+.joinreq{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--paper);color:var(--paper-ink);border-radius:16px;padding:10px 12px 10px 14px;font-size:14.5px;animation:pop .25s ease-out}
+.joinreq .x{border-color:rgba(42,36,64,.3);color:var(--paper-ink)}
+.joinreq .btn.sm{box-shadow:0 3px 0 var(--bulb-deep)}
+@keyframes pop{from{transform:translateY(-6px);opacity:0}to{transform:none;opacity:1}}
+.x,.btn.sm,.kickbtn{white-space:nowrap}
+.joinreq>span{flex:1 1 160px}
+
+.kickbtn.ok{background:rgba(127,191,106,.22);color:#BDEBAA}
+.chip.wait{box-shadow:0 0 0 1.5px rgba(255,201,74,.45) inset}
+.chip .tag{font-style:normal;font-weight:600;font-size:12px;color:var(--bulb)}
 </style>
 </head>
 <body>
@@ -212,8 +229,8 @@ const WORDS_EL={"food":["Σουβλάκι","Μουσακάς","Γεμιστά","
    host over WebRTC (PeerJS) and read/write through a tiny request protocol.
    PeerJS's matchmaking server only introduces phones; game data goes
    phone-to-phone. */
-const APP_VERSION='2.3.1';
-const PROTO=3;               // bump when the host<->player messages change
+const APP_VERSION='2.5.0';
+const PROTO=5;               // bump when the host<->player messages change
 const hostId=code=>'parea-party-gr-'+code.toLowerCase();
 function norm(v){
   if(v===null||v===undefined)return null;
@@ -274,7 +291,7 @@ async function hostRoomDB(code,restoreTree){
     if(s[0]!=='rooms'||s[1]!==code||s.length<3)return false;
     if(uid===hostUid())return true;
     const seg=s[2],who=s[3];
-    if(mode==='read')return seg==='meta'||seg==='players'||seg==='state'||((seg==='inputs'||seg==='secrets')&&who===uid);
+    if(mode==='read')return seg==='meta'||seg==='players'||seg==='state'||((seg==='inputs'||seg==='secrets'||seg==='kicked')&&who===uid);
     return (seg==='players'||seg==='inputs')&&who===uid&&s.length>=4;
   }
   const send=(cl,m)=>{try{cl.conn.send(m)}catch(e){}};
@@ -309,12 +326,20 @@ async function hostRoomDB(code,restoreTree){
     const cl={conn,uid:null,subs:new Map(),disc:new Map(),fire:null};
     conn.on('data',m=>onMsg(cl,m));
     const gone=()=>{if(cl.gone)return;cl.gone=true;clients.delete(cl);if(cl.fire)store.fires.delete(cl.fire);
-      if(cl.uid&&![...clients].some(c=>c.uid===cl.uid))for(const[p,v]of cl.disc)db.set(p,v)};
+      if(cl.uid&&!cl.kicked&&![...clients].some(c=>c.uid===cl.uid))for(const[p,v]of cl.disc)db.set(p,v)};
     conn.on('close',gone);conn.on('error',gone);
   });
   peer.on('disconnected',()=>{if(!db.closed)setTimeout(()=>{try{peer.reconnect()}catch(e){}},1000)});
   db.close=()=>{db.closed=true;setTimeout(()=>{try{peer.destroy()}catch(e){}},500)};
   db.clientCount=()=>clients.size;
+  /* remove a player: drop their seat, tell their phone, cut the line; if they come back they wait for approval */
+  db.kick=async uid=>{
+    await db.set(`rooms/${code}/kicked/${uid}`,true);
+    for(const cl of [...clients])if(cl.uid===uid){cl.kicked=true;cl.disc.clear();send(cl,{t:'kicked'});setTimeout(()=>{try{cl.conn.close()}catch(e){}},400)}
+    await db.remove(`rooms/${code}/players/${uid}`);
+    await db.remove(`rooms/${code}/inputs/${uid}`);
+    await db.remove(`rooms/${code}/secrets/${uid}`);
+  };
   return db;
 }
 async function hostRoomWithRetry(code,tree,tries){
@@ -352,6 +377,7 @@ async function joinRoomDB(code,opt){
           for(const[p,v]of disc)c.send({t:'ondisc',p,v});
           setReady(true);res();return;
         }
+        if(m.t==='kicked'){db.closed=true;db.onFatal&&db.onFatal('kicked');setTimeout(()=>{try{c.close()}catch(x){}try{peer.destroy()}catch(x){}},200);return}
         if(m.t==='reject'){const e=new Error(m.reason);e.reject=m;fail(e);return}
         if(m.t==='res'){const q=pending.get(m.id);if(q){pending.delete(m.id);m.ok?q.res(m.v):q.rej(new Error(m.err||'error'))}return}
         if(m.t==='val'){const s=subs.get(m.sid);if(s)s.cb(m.v===undefined?null:m.v);return}
@@ -366,7 +392,7 @@ async function joinRoomDB(code,opt){
   let retrying=false;
   async function retry(){
     if(db.closed||ready||retrying)return;retrying=true;
-    try{await connect()}catch(e){if(e.reject&&e.reject.reason==='version'){db.onFatal&&db.onFatal('version');retrying=false;return}retrying=false;setTimeout(retry,2500);return}
+    try{await connect()}catch(e){if(e.reject&&(e.reject.reason==='version'||e.reject.reason==='kicked')){db.closed=true;db.onFatal&&db.onFatal(e.reject.reason);retrying=false;return}retrying=false;setTimeout(retry,2500);return}
     retrying=false;
   }
   peer.on('error',e=>{if(e&&e.type==='peer-unavailable'&&pendingConnect)pendingConnect(Object.assign(new Error('not-found'),{notFound:true}))});
@@ -436,6 +462,11 @@ el:{appName:'Δεν είμαι!',tagline:'Online party games — ο καθένα
  hideRole:'🙈 Κρύψε τον ρόλο μου',showRole:'👁 Δες τον ρόλο μου',starts:'Ξεκινάει ο/η',clueInfo:'Με τη σειρά, ο καθένας λέει μία λέξη. Μετά συζητήστε!',
  voteNow:'🗳️ Ψηφοφορία τώρα',eliminated:'Έχεις αποκλειστεί — παρακολουθείς 👀',voteL:'Impostor · Ψηφοφορία',whoImp:'🗳️ Ποιος είναι ο Impostor;',
  voteInfo:'Πάτα έναν παίκτη. Μπορείς να αλλάξεις ψήφο μέχρι να ψηφίσουν όλοι.',votedL:'Ψήφισαν',closeVote:'Κλείσε την ψηφοφορία τώρα',waitAll:'Η ψηφοφορία κλείνει μόλις ψηφίσουν όλοι.',
+ kick:'Αφαίρεση',kickSure:'Σίγουρα;',kickedMsg:'Ο οικοδεσπότης σε αφαίρεσε από το δωμάτιο. Μπορείς να ζητήσεις να ξαναμπείς: θα πρέπει να σε εγκρίνει.',kickedToast:n=>`${n}: αφαιρέθηκε`,
+ wantsJoin:n=>`🙋 <b>${n}</b> θέλει να μπει στο παιχνίδι`,letIn:'Να μπει',notNow:'Όχι τώρα',joinedToast:n=>`${n} μπήκε στο παιχνίδι`,
+ askedTitle:'Ζήτησες να μπεις',askedText:'Περιμένουμε τον οικοδεσπότη. Μόλις πει ναι, μπαίνεις κατευθείαν στο παιχνίδι.',
+ askedBack:'Περιμένουμε τον οικοδεσπότη να σε ξαναβάλει στο δωμάτιο.',notYetTitle:'Όχι ακόμα',notYetText:'Ο οικοδεσπότης μπορεί να σε βάλει αργότερα. Μείνε εδώ!',waitingTag:'περιμένει',declinedTitle:'Όχι αυτόν τον γύρο',declinedText:'Ο οικοδεσπότης θα σε βάλει στο επόμενο παιχνίδι. Μείνε εδώ!',
+ playersBtn:'Παίκτες',lLeft:p=>`👋 ${p} έφυγε από το παιχνίδι.`,cantKickSelf:'',
  endL:'Impostor · Τέλος',citWin:'Κέρδισαν οι Πολίτες!',impsWin:'Κέρδισαν οι Impostors!',impWin:'Κέρδισε ο Impostor!',
  lastOut:(n,r)=>`Τελευταίος βγήκε: <b>${n}</b> (${r})`,roleImp:'Impostor',roleCit:'Πολίτης',wordWas:'Η μυστική λέξη ήταν',votesL:'Ψήφοι',
  newRound:'Νέος γύρος (νέα λέξη)',hostWillRound:'Ο οικοδεσπότης θα ξεκινήσει νέο γύρο…',
@@ -486,6 +517,11 @@ en:{appName:'Not Me!',tagline:'Online party games — everyone plays on their ow
  hideRole:'🙈 Hide my role',showRole:'👁 See my role',starts:'Starting with',clueInfo:'In turn, everyone says one word. Then discuss!',
  voteNow:'🗳️ Vote now',eliminated:"You're out — watching 👀",voteL:'Impostor · Vote',whoImp:'🗳️ Who is the Impostor?',
  voteInfo:'Tap a player. You can change your vote until everyone has voted.',votedL:'Voted',closeVote:'Close the vote now',waitAll:'The vote closes once everyone has voted.',
+ kick:'Remove',kickSure:'Sure?',kickedMsg:'The host removed you from the room. You can ask to join again: the host will need to let you in.',kickedToast:n=>`${n} was removed`,
+ wantsJoin:n=>`🙋 <b>${n}</b> wants to join the game`,letIn:'Let in',notNow:'Not now',joinedToast:n=>`${n} joined the game`,
+ askedTitle:'You asked to join',askedText:"Waiting for the host. As soon as they say yes, you're straight into the game.",
+ askedBack:'Waiting for the host to let you back into the room.',notYetTitle:'Not yet',notYetText:'The host may let you in later. Stay here!',waitingTag:'waiting',declinedTitle:'Not this round',declinedText:"The host will add you in the next game. Stay here!",
+ playersBtn:'Players',lLeft:p=>`👋 ${p} left the game.`,cantKickSelf:'',
  endL:'Impostor · Game over',citWin:'The Citizens win!',impsWin:'The Impostors win!',impWin:'The Impostor wins!',
  lastOut:(n,r)=>`Last out: <b>${n}</b> (${r})`,roleImp:'Impostor',roleCit:'Citizen',wordWas:'The secret word was',votesL:'Votes',
  newRound:'New round (new word)',hostWillRound:'The host will start a new round…',
@@ -535,7 +571,7 @@ const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(M
 const fmt=n=>{n=Number(n);return Math.abs(n)<10000?String(n):n.toLocaleString(LANG==='el'?'el-GR':'en-US')};
 const P=p=>`rooms/${A.code}/${p}`;
 const isHost=()=>!!(A.meta&&A.meta.host===A.uid);
-const pname=u=>(A.players[u]&&A.players[u].name)||'?';
+const pname=u=>(A.players[u]&&A.players[u].name)||(A.state&&A.state.gone&&A.state.gone[u])||'?';
 const online=u=>!!(A.players[u]&&A.players[u].online);
 const arr=v=>Array.isArray(v)?v:(v&&typeof v==='object'?Object.values(v):[]);
 const fmtT=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
@@ -550,6 +586,7 @@ function getUid(){
 }
 function connErr(e){
   if(e&&e.reject&&e.reject.reason==='version')return t('errVersion',esc(e.reject.app||''));
+  if(e&&e.reject&&e.reject.reason==='kicked')return t('kickedMsg');
   if(e&&(e.notFound||e.message==='not-found'))return t('errNotFound');
   if(e&&e.message==='timeout')return t('errTimeout');
   return t('errGeneric',esc((e&&(e.message||e.type))||e));
@@ -575,7 +612,8 @@ async function boot(){
 }
 function wireDb(){
   A.db.onConnected(c=>{A.connected=c;if(c&&A.code)markOnline();render()});
-  A.db.onFatal=r=>{if(r==='version'){leaveLocal();A.err=connErr({reject:{reason:'version'}});render()}};
+  A.db.onFatal=r=>{if(r==='version'){leaveLocal();A.err=connErr({reject:{reason:'version'}});render()}
+    else if(r==='kicked'){leaveLocal();A.err=t('kickedMsg');render()}};
 }
 function clearSession(){try{['parea-room','parea-role','parea-host-tree'].forEach(k=>sessionStorage.removeItem(k))}catch(e){}}
 function randCode(){const L='ABCDEFGHJKLMNPQRSTUVWXYZ';let s='';for(let i=0;i<4;i++)s+=L[Math.floor(Math.random()*L.length)];return s}
@@ -628,7 +666,7 @@ async function spawnBot(code,name){
   db.on(R+'state',v=>{st.state=v;act()});db.on(R+'secrets/'+uid,v=>{st.secret=v;act()});
   db.on(R+'inputs/'+uid,v=>{st.input=v;act()});db.on(R+'players',v=>{st.players=v||{}});
   db.onDisconnectSet(R+`players/${uid}/online`,false);
-  return db;
+  db.uid=uid;return db;
 }
 async function joinRoom(){
   if(A.busy)return;
@@ -654,6 +692,7 @@ async function enterRoom(code,resume){
   sub('state',v=>{const old=A.state;A.state=v;onState(old,v);hostTick();render()});
   sub('secrets/'+A.uid,v=>{A.secret=v;render()});
   sub('inputs/'+A.uid,v=>{A.myInput=v;render()});
+  sub('kicked/'+A.uid,v=>{A.waitingBack=!!v;render()});
   keepAwake();
   render();
 }
@@ -663,13 +702,14 @@ function setupHost(){
   if(!isHost()||A.hostUnsubs.length)return;
   A.hostUnsubs.push(A.db.on(P('inputs'),v=>{A.inputs=v||{};hostTick()}));
   A.hostUnsubs.push(A.db.on(P('hostdata'),v=>{A.hostdata=v;hostTick()}));
+  A.hostUnsubs.push(A.db.on(P('kicked'),v=>{A.kicked=v||{};render()}));
   clearInterval(hostTimer);hostTimer=setInterval(hostTick,1000);
 }
 function leaveLocal(){
   A.bots.forEach(b=>{try{b.close()}catch(e){}});A.bots=[];
   A.unsubs.concat(A.hostUnsubs).forEach(u=>{try{u()}catch(e){}});A.unsubs=[];A.hostUnsubs=[];clearInterval(hostTimer);
   if(A.db){try{A.db.close()}catch(e){}}
-  Object.assign(A,{db:null,code:null,meta:null,players:{},state:null,secret:null,myInput:null,inputs:{},hostdata:null,lastAct:null,draft:{},peek:false,connected:true});
+  Object.assign(A,{showPlayers:false,kickArm:null,waitingBack:false,kicked:{},db:null,code:null,meta:null,players:{},state:null,secret:null,myInput:null,inputs:{},hostdata:null,lastAct:null,draft:{},peek:false,connected:true});
   clearSession();try{history.replaceState(null,'',location.pathname)}catch(e){}
   if(A.demo){A.demo=false;PEER_OVERRIDE=null}
   releaseWake();render();
@@ -694,7 +734,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 
 /* ---------------- host engine ---------------- */
 function hostAct(key,fn){if(A.lastAct===key)return;A.lastAct=key;fn()}
-function participants(){return Object.entries(A.players).filter(([u,p])=>p.online).sort((a,b)=>(a[1].joined||0)-(b[1].joined||0)).map(([u])=>u)}
+function participants(){return Object.entries(A.players).filter(([u,p])=>p.online&&!(A.kicked||{})[u]).sort((a,b)=>(a[1].joined||0)-(b[1].joined||0)).map(([u])=>u)}
 const activeOf=list=>arr(list).filter(online);
 function hostTick(){
   if(!isHost()||!A.state)return;const s=A.state;
@@ -790,7 +830,42 @@ function tally(){
     A.db.update(P('state'),{phase:'over',alive:left,win:impsLeft===0?'cit':'imp',elim:{u:out,wasImp},reveal:{cat:h.cat,wi:h.wi,imps},lastVotes:counts,voted:null});return}
   A.db.update(P('state'),{...base,alive:left,starter:shuffle(left)[0],elim:{u:out,wasImp},last:{k:wasImp?'impOut':'citOut',u:out,n:impsLeft}});
 }
-const lastText=l=>!l?'':l.k==='tie'?t('lTie'):l.k==='impOut'?t('lImpOut',esc(pname(l.u)),l.n):t('lCitOut',esc(pname(l.u)));
+const lastText=l=>!l?'':l.k==='left'?t('lLeft',esc(pname(l.u))):l.k==='tie'?t('lTie'):l.k==='impOut'?t('lImpOut',esc(pname(l.u)),l.n):t('lCitOut',esc(pname(l.u)));
+/* ---- removing players / letting latecomers in ---- */
+function pendingJoins(){const s=A.state||{};if(!isHost())return [];
+  const lobby=!s.phase||s.phase==='lobby',order=arr(s.order),dec=s.declined||{},kicked=A.kicked||{};
+  return Object.entries(A.players).filter(([u,p])=>p.online&&u!==A.uid&&!dec[u]&&(kicked[u]||(!lobby&&!order.includes(u)))).sort((a,b)=>(a[1].joined||0)-(b[1].joined||0)).map(([u])=>u)}
+async function removeFromGame(u){
+  const s=A.state;if(!s||!s.phase||s.phase==='lobby'||!arr(s.order).includes(u))return;
+  const order=arr(s.order).filter(x=>x!==u);const upd={order,['gone/'+u]:pname(u)};
+  if(s.game==='imp'&&s.phase!=='over'&&arr(s.alive).includes(u)){
+    const alive=arr(s.alive).filter(x=>x!==u),h=A.hostdata||{},imps=arr(h.imps);
+    const impsLeft=alive.filter(x=>imps.includes(x)).length,cits=alive.length-impsLeft;
+    upd.alive=alive;
+    if(s.phase!=='roles'&&(impsLeft===0||impsLeft>=cits)){Object.assign(upd,{phase:'over',win:impsLeft===0?'cit':'imp',elim:null,reveal:{cat:h.cat,wi:h.wi,imps},last:{k:'left',u},voted:null})}
+    else{upd.last={k:'left',u};if(s.starter===u&&alive.length)upd.starter=shuffle(alive)[0]}
+  }
+  await A.db.update(P('state'),upd);
+}
+async function kickPlayer(u){
+  if(!isHost()||u===A.uid||!A.db.kick)return;const n=pname(u);A.kickArm=null;
+  await removeFromGame(u);await A.db.kick(u);
+  const bot=A.bots.find(b=>b.uid===u);if(bot){A.bots=A.bots.filter(b=>b!==bot)}
+  toast(t('kickedToast',n));
+}
+async function approvePlayer(u){
+  if(!isHost()||!A.players[u])return;
+  const wasRemoved=!!(A.kicked||{})[u];if(wasRemoved)await A.db.remove(P('kicked/'+u));
+  const s=A.state||{};
+  if(!s.phase||s.phase==='lobby'||arr(s.order).includes(u)){if(s.phase)await A.db.update(P('state'),{['declined/'+u]:null});toast(t('joinedToast',pname(u)));return}
+  const upd={order:[...arr(s.order),u],['declined/'+u]:null};
+  if(s.game==='range'){upd['scores/'+u]=0;upd['used/'+u]={steal:false,swap:false,double:false}}
+  if(s.game==='imp'&&s.phase!=='over'){const h=A.hostdata||{};
+    await A.db.set(P('secrets/'+u),{gid:s.gid,role:'cit',cat:h.cat,wi:h.wi});
+    upd.alive=[...arr(s.alive),u]}
+  await A.db.update(P('state'),upd);toast(t('joinedToast',pname(u)));
+}
+function declinePlayer(u){if(!A.state)return A.db.set(P('state'),{phase:'lobby',declined:{[u]:true}});return A.db.update(P('state'),{['declined/'+u]:true})}
 function backToLobby(){A.lastAct=null;A.db.set(P('state'),{phase:'lobby'});A.db.remove(P('secrets'));A.db.remove(P('inputs'));A.db.remove(P('hostdata'))}
 
 /* ---------------- player actions ---------------- */
@@ -820,10 +895,21 @@ function homeView(){
   ${rulesRow()}<div class="mut center" style="font-size:12px;opacity:.6">${t('version')} ${APP_VERSION}</div>`;
 }
 function playersList(){
-  return Object.entries(A.players).sort((a,b)=>(a[1].joined||0)-(b[1].joined||0)).map(([u,p])=>
-    `<div class="chip${p.online?'':' off'}">${avatar(u)}<span>${esc(p.name)}${u===A.uid?' '+t('you'):''}</span>${A.meta&&A.meta.host===u?'<i class="crown" title="host">👑</i>':''}<i class="dot${p.online?' on':''}"></i></div>`).join('');
+  const canKick=isHost()&&!!(A.db&&A.db.kick);
+  return Object.entries(A.players).sort((a,b)=>(a[1].joined||0)-(b[1].joined||0)).map(([u,p])=>{
+    const k=canKick&&u!==A.uid?(A.kickArm===u?`<button class="kickbtn sure" data-a="kick-yes" data-p="${u}" aria-label="${t('kick')} ${esc(p.name)}">${t('kickSure')}</button>`:`<button class="kickbtn" data-a="kick" data-p="${u}" aria-label="${t('kick')} ${esc(p.name)}" title="${t('kick')}">✕</button>`):'';
+    const waiting=canKick&&(A.kicked||{})[u]||(!isHost()&&u===A.uid&&A.waitingBack);
+    const ok=canKick&&(A.kicked||{})[u]?`<button class="kickbtn ok" data-a="approve" data-p="${u}" aria-label="${t('letIn')} ${esc(p.name)}" title="${t('letIn')}">✓</button>`:'';
+    return `<div class="chip${p.online?'':' off'}${A.kickArm===u?' arm':''}${waiting?' wait':''}">${avatar(u)}<span>${esc(p.name)}${u===A.uid?' '+t('you'):''}${waiting?` <em class="tag">⏳ ${t('waitingTag')}</em>`:''}</span>${A.meta&&A.meta.host===u?'<i class="crown" title="host">👑</i>':''}<i class="dot${p.online?' on':''}"></i>${ok}${k}</div>`}).join('');
 }
-function topBar(label){return `<div class="top"><span class="mut">${label}</span><div class="row" style="flex:none;gap:6px"><button class="x" data-a="lang" data-v="${LANG==='el'?'en':'el'}" title="Language">${LANG==='el'?'EN':'ΕΛ'}</button><span class="codepill">${esc(A.code)}</span>${A.connected?'':`<span class="badc">${t('offline')}</span>`}<button class="x" data-a="leave">${t('leave')}</button></div></div>`}
+function joinRequests(){
+  const list=pendingJoins();if(!list.length)return '';
+  return list.map(u=>`<div class="joinreq"><span>${t('wantsJoin',esc(pname(u)))}</span><div class="row" style="flex:none;gap:6px"><button class="btn sm" data-a="approve" data-p="${u}">${t('letIn')}</button><button class="x" data-a="decline" data-p="${u}">${t('notNow')}</button></div></div>`).join('');
+}
+function topBar(label){const inGame=A.state&&A.state.phase&&A.state.phase!=='lobby';
+  const pb=isHost()&&inGame?`<button class="x${A.showPlayers?' on':''}" data-a="players" aria-expanded="${!!A.showPlayers}">👥 ${Object.keys(A.players).length}</button>`:'';
+  const panel=isHost()&&inGame&&A.showPlayers?`<div class="box playerspanel"><h3>${t('players')}</h3><div class="chips" style="margin-top:10px">${playersList()}</div></div>`:'';
+  return `<div class="top"><span class="mut">${label}</span><div class="row" style="flex:none;gap:6px">${pb}<button class="x" data-a="lang" data-v="${LANG==='el'?'en':'el'}" title="Language">${LANG==='el'?'EN':'ΕΛ'}</button><span class="codepill">${esc(A.code)}</span>${A.connected?'':`<span class="badc">${t('offline')}</span>`}<button class="x" data-a="leave">${t('leave')}</button></div></div>${panel}${joinRequests()}`}
 function lobbyView(){
   const host=isHost(),n=participants().length,S=A.impSet;
   const maxImp=n>=7?3:n>=5?2:1;
@@ -841,8 +927,14 @@ function lobbyView(){
   :`<div class="box center"><div style="font-size:40px">⏳</div><div class="mut">${t('waitHost')}</div></div>`}
   ${rulesRow()}`;
 }
+function waitingBackView(){
+  const dec=((A.state||{}).declined||{})[A.uid];
+  return `${topBar(t('lobby'))}<div class="box center"><div style="font-size:40px">${dec?'🕐':'🙋'}</div><div class="big" style="font-size:22px">${dec?t('notYetTitle'):t('askedTitle')}</div><p class="mut" style="margin-top:8px">${dec?t('notYetText'):t('askedBack')}</p></div>
+  <div class="box"><h3>${t('players')}</h3><div class="chips" style="margin-top:10px">${playersList()}</div></div>`;
+}
 function spectatorView(){
-  return `${topBar(t('inProgress'))}<div class="box center"><div style="font-size:40px">👀</div><div class="big" style="font-size:22px">${t('startedTitle')}</div><p class="mut" style="margin-top:8px">${t('nextGame')}</p></div>
+  const dec=(A.state.declined||{})[A.uid];
+  return `${topBar(t('inProgress'))}<div class="box center"><div style="font-size:40px">${dec?'🕐':'🙋'}</div><div class="big" style="font-size:22px">${dec?t('declinedTitle'):t('askedTitle')}</div><p class="mut" style="margin-top:8px">${dec?t('declinedText'):t('askedText')}</p></div>
   <div class="box"><h3>${t('players')}</h3><div class="chips" style="margin-top:10px">${playersList()}</div></div>`;
 }
 function scoreboard(s){
@@ -923,7 +1015,7 @@ function impView(s){
     const cit=s.win==='cit',r=s.reveal||{};const votes=s.lastVotes||{};
     return `${topBar(t('endL'))}<div class="box center" style="padding:24px 16px"><div class="confetti">${cit?'🎉':'🕵️'}</div>
     <div class="big">${cit?t('citWin'):(s.impCount>1?t('impsWin'):t('impWin'))}</div>
-    ${s.elim?`<div class="mut" style="margin-top:8px">${t('lastOut',esc(pname(s.elim.u)),s.elim.wasImp?t('roleImp'):t('roleCit'))}</div>`:''}</div>
+    ${s.elim?`<div class="mut" style="margin-top:8px">${t('lastOut',esc(pname(s.elim.u)),s.elim.wasImp?t('roleImp'):t('roleCit'))}</div>`:s.last&&s.last.k==='left'?`<div class="mut" style="margin-top:8px">${lastText(s.last)}</div>`:''}</div>
     <div class="box center"><div class="mut">${t('wordWas')}</div><div class="word glow">${esc(wordText(r.cat,r.wi))}</div>
     <div class="mut">${esc(catName(r.cat))}</div>
     <div class="mut" style="margin-top:8px">${s.impCount>1?'Impostors':'Impostor'}: <b>${arr(r.imps).map(u=>esc(pname(u))).join(', ')}</b></div>
@@ -943,6 +1035,7 @@ function render(){
   if(A.rules)h=rulesView(A.rules);
   else if(!A.code)h=homeView();
   else if(!A.meta)h=`<div class="box center mut">${t('connecting')}</div>`;
+  else if(A.waitingBack&&!isHost())h=waitingBackView();
   else if(!s||s.phase==='lobby')h=lobbyView();
   else if(!arr(s.order).includes(A.uid))h=spectatorView();
   else if(s.game==='range')h=s.phase==='answer'?rangeAnswerView(s):rangeRevealView(s);
@@ -965,6 +1058,11 @@ app.addEventListener('click',e=>{
     case'create':run(createRoom());break;
     case'join':run(joinRoom());break;
     case'demo':run(startDemo());break;
+    case'kick':{const u=b.dataset.p;A.kickArm=u;render();clearTimeout(A.kickT);A.kickT=setTimeout(()=>{if(A.kickArm===u){A.kickArm=null;render()}},4000);break}
+    case'kick-yes':run(kickPlayer(b.dataset.p));break;
+    case'players':A.showPlayers=!A.showPlayers;A.kickArm=null;render();break;
+    case'approve':run(approvePlayer(b.dataset.p));break;
+    case'decline':run(declinePlayer(b.dataset.p));break;
     case'bulb':{const i=+b.dataset.i;b.classList.add('tapped');
       const EO=eggOrder();if(i===EO[eggPos])eggPos++;else eggPos=(i===EO[0])?1:0;
       if(eggPos===EO.length){eggPos=0;saveName();A.egg=true;seenBulbs.delete('egg-a');seenBulbs.delete('egg-b');render();try{navigator.vibrate&&navigator.vibrate([40,40,80])}catch(e){}}
